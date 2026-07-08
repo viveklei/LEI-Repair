@@ -28,6 +28,7 @@ import { createPortal } from 'react-dom';
 import api from '../services/api';
 import TechBackground from './TechBackground';
 import { QRScannerModal } from './QRScannerModal';
+import logoImg from '../assets/logo.png';
 import { socket } from '../services/socket';
 
 // ─── Menu item definition ──────────────────────────────────────────────────
@@ -208,7 +209,7 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       <aside className="hidden md:flex flex-col w-64 bg-white/30 backdrop-blur-xl shrink-0 border-r border-slate-200/50 relative z-10">
         {/* Logo */}
         <div className="h-16 flex items-center gap-3 px-5 bg-white/20 border-b border-slate-200/50 shrink-0">
-          <img src="logo.png" className="h-9 w-9 object-contain rounded-xl bg-white border border-white/50 p-0.5 shadow-sm" alt="LEI" />
+          <img src={logoImg} className="h-9 w-9 object-contain rounded-xl bg-white border border-white/50 p-0.5 shadow-sm" alt="LEI" />
           <div>
             <span className="font-extrabold text-base tracking-wide text-slate-900 block leading-tight">LEI Repair</span>
             <span className="text-[9px] font-semibold text-slate-400 uppercase tracking-widest">Laser Service Hub</span>
@@ -278,7 +279,7 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           >
             <div className="flex items-center justify-between px-5 py-4 bg-white/30 border-b border-white/40">
               <div className="flex items-center gap-3">
-                <img src="logo.png" className="h-9 w-9 object-contain rounded-xl bg-white p-0.5 border border-white/50 shadow-sm" alt="LEI" />
+                <img src={logoImg} className="h-9 w-9 object-contain rounded-xl bg-white p-0.5 border border-white/50 shadow-sm" alt="LEI" />
                 <div>
                   <span className="font-extrabold text-base text-slate-900">LEI Repair</span>
                   <span className="block text-[9px] text-slate-400 uppercase tracking-widest">Laser Service Hub</span>
@@ -360,7 +361,7 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
             {/* Mobile: show logo text */}
             <div className="md:hidden flex items-center gap-2 mr-2">
-              <img src="logo.png" className="h-7 w-7 object-contain rounded-lg bg-white p-0.5 border border-white/50 shadow-sm" alt="LEI" />
+              <img src={logoImg} className="h-7 w-7 object-contain rounded-lg bg-white p-0.5 border border-white/50 shadow-sm" alt="LEI" />
               <span className="font-extrabold text-sm text-slate-900">LEI Repair</span>
             </div>
 

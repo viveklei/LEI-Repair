@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import logoImg from '../assets/logo.png';
 
 // --- Company Constants ---------------------------------------------------------
 const CO_NAME    = 'LASER EXPERTS INDIA LLP';
@@ -27,7 +28,7 @@ const PIE_COLORS = ['#1D4ED8','#06B6D4','#10B981','#F59E0B','#F43F5E','#8B5CF6',
 
 async function logoBase64(): Promise<string | null> {
   try {
-    const res = await fetch('logo.png');
+    const res = await fetch(logoImg);
     const blob = await res.blob();
     return new Promise(resolve => {
       const rd = new FileReader();
