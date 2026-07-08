@@ -81,8 +81,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setPortalJobId(null);
   };
 
-  const customerPortalLogin = async (trackId?: string, mobileNumber?: string, otp?: string, firebaseToken?: string): Promise<string | null> => {
-    const res = await api.post('/portal/login', { trackId, mobileNumber, otp, firebaseToken });
+  const customerPortalLogin = async (trackId?: string, email?: string, otp?: string): Promise<string | null> => {
+    const res = await api.post('/portal/login', { trackId, email, otp });
     const { token, jobId, customerId } = res.data;
     
     localStorage.setItem('accessToken', token);

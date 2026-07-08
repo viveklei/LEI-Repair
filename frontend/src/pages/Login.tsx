@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Activity, ShieldAlert, Cpu, KeyRound, Smartphone } from 'lucide-react';
 import logoImg from '../assets/logo.png';
-import { auth, isFirebaseConfigured } from '../config/firebase';
-import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import api from '../services/api';
 
 const Login: React.FC = () => {
@@ -21,27 +19,12 @@ const Login: React.FC = () => {
   // Customer portal states
   const [portalTab, setPortalTab] = useState<'track' | 'otp'>('track');
   const [trackId, setTrackId] = useState('');
-  const [mobileNumber, setMobileNumber] = useState('');
+  const [customerEmail, setCustomerEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    return () => {
-      // Clean up recaptcha verifier on unmount
-      if ((window as any).recaptchaVerifier) {
-        try {
-          (window as any).recaptchaVerifier.clear();
-          (window as any).recaptchaVerifier = null;
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    };
-  }, []);
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -67,68 +50,21 @@ const Login: React.FC = () => {
         if (path) navigate(path);
       } else {
         if (!otpSent) {
-          // Normalize phone number (E.164 format)
-          let formattedMobile = mobileNumber.trim();
-          if (!formattedMobile.startsWith('+')) {
-            // Remove leading zero if present
-            if (formattedMobile.startsWith('0')) {
-              formattedMobile = formattedMobile.slice(1);
-            }
-            formattedMobile = '+91' + formattedMobile; // default to India prefix +91
-          }
-
-          // First, check backend to see if the mobile number is registered
-          let checkRes;
+          // First, check backend to see if the email address is registered
           try {
-            checkRes = await api.post('/portal/check-mobile', { mobileNumber: formattedMobile });
+            await api.post('/portal/check-email', { email: customerEmail.trim() });
           } catch (err: any) {
-            setError(err.response?.data?.message || 'Phone number is not registered under any job ticket.');
+            setError(err.response?.data?.message || 'Email address is not registered under any customer account.');
             setLoading(false);
             return;
           }
 
-          if (!isFirebaseConfigured) {
-            // Firebase is not configured, fall back to mock OTP flow
-            setOtpSent(true);
-            setError(null);
-            const registeredEmail = checkRes.data.email || 'your registered email';
-            alert(`A verification code has been sent to your registered email: ${registeredEmail}. (You can also find it in your backend logs/notifications.log)`);
-            setLoading(false);
-            return;
-          }
-
-          // Setup invisible recaptcha verifier
-          if (!(window as any).recaptchaVerifier) {
-            (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
-              size: 'invisible',
-              callback: () => {}
-            });
-          }
-          const verifier = (window as any).recaptchaVerifier;
-
-          // Request Firebase SMS OTP
-          const confirmation = await signInWithPhoneNumber(auth, formattedMobile, verifier);
-          setConfirmationResult(confirmation);
           setOtpSent(true);
           setError(null);
-          alert('OTP Verification Code has been sent to ' + formattedMobile);
+          alert(`A verification code has been sent to your registered email: ${customerEmail.trim()}. (You can also find it in your backend logs/notifications.log)`);
         } else {
-          if (!isFirebaseConfigured) {
-            // Verify mock OTP directly on backend
-            const path = await customerPortalLogin(undefined, mobileNumber, otp);
-            if (path) navigate(path);
-            return;
-          }
-
           // Verify OTP code entered by the user
-          if (!confirmationResult) {
-            throw new Error('Authentication session lost. Please request a new OTP.');
-          }
-          const userCredential = await confirmationResult.confirm(otp.trim());
-          const firebaseToken = await userCredential.user.getIdToken();
-
-          // Log in on backend using the validated Firebase token
-          const path = await customerPortalLogin(undefined, mobileNumber, undefined, firebaseToken);
+          const path = await customerPortalLogin(undefined, customerEmail.trim(), otp);
           if (path) navigate(path);
         }
       }
@@ -255,7 +191,7 @@ const Login: React.FC = () => {
                   portalTab === 'otp' ? 'bg-slate-700 text-white' : 'text-slate-400 hover:text-slate-200'
                 }`}
               >
-                Mobile + OTP
+                Email + OTP
               </button>
             </div>
 
@@ -278,16 +214,16 @@ const Login: React.FC = () => {
                 <div className="space-y-4">
                   <div>
                     <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-1">
-                      Mobile Number
+                      Email Address
                     </label>
                     <input
-                      type="tel"
+                      type="email"
                       required
                       disabled={otpSent}
-                      value={mobileNumber}
-                      onChange={(e) => setMobileNumber(e.target.value)}
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
                       className="w-full bg-slate-700/50 border border-slate-600 rounded-xl px-4 py-3 text-white placeholder-slate-400 focus:outline-none focus:border-cyan-400 transition-colors"
-                      placeholder="+919876543210"
+                      placeholder="customer@domain.com"
                     />
                   </div>
                   {otpSent && (

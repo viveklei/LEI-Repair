@@ -249,7 +249,7 @@ export class ApiController {
   // --- CUSTOMER PORTAL ACCESS ---
   static async customerPortalLogin(req: AuthenticatedRequest, res: Response) {
     try {
-      const { trackId, mobileNumber, otp, firebaseToken } = req.body;
+      const { trackId, email, otp } = req.body;
       
       // If Track ID is provided, locate it directly
       if (trackId) {
@@ -269,56 +269,17 @@ export class ApiController {
         return res.json({ token, jobId: job.id });
       }
 
-      // If Firebase verification is used
-      if (firebaseToken) {
-        try {
-          const decodedToken = await getAuth().verifyIdToken(firebaseToken);
-          const phone = decodedToken.phone_number; // e.g. +918210708134
-          if (!phone) {
-            return res.status(400).json({ message: 'Firebase token does not contain a phone number.' });
-          }
-
-          const cleanPhone = phone.replace(/^\+91/, '').trim();
-          const customer = await prisma.customer.findFirst({
-            where: {
-              OR: [
-                { mobileNumber: phone },
-                { mobileNumber: cleanPhone }
-              ],
-              isDeleted: false
-            }
-          });
-          if (!customer) return res.status(404).json({ message: 'Customer phone number not registered' });
-
-          const token = jwt.sign(
-            { id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id },
-            JWT_SECRET,
-            { expiresIn: '2h' }
-          );
-
-          return res.json({ token, customerId: customer.id });
-        } catch (fbErr: any) {
-          return res.status(401).json({ message: 'Firebase verification failed: ' + fbErr.message });
-        }
-      }
-
       // Verify custom Email OTP code stored in server cache
-      if (mobileNumber && otp) {
-        const cleanPhone = mobileNumber.replace(/^\+91/, '').trim();
-        const cachedEntry = ApiController.otpCache.get(mobileNumber.trim()) || ApiController.otpCache.get(cleanPhone);
+      if (email && otp) {
+        const cleanEmail = email.toLowerCase().trim();
+        const cachedEntry = ApiController.otpCache.get(cleanEmail);
 
         // Fail-safe check
         if (!cachedEntry) {
-          // Allow default local testing fallback only if no OTP has been cached yet
+          // Allow default local testing fallback (123456) only if no OTP has been cached yet
           if (otp === '123456') {
             const customer = await prisma.customer.findFirst({
-              where: {
-                OR: [
-                  { mobileNumber: mobileNumber.trim() },
-                  { mobileNumber: cleanPhone }
-                ],
-                isDeleted: false
-              }
+              where: { email: cleanEmail, isDeleted: false }
             });
             if (customer) {
               const token = jwt.sign(
@@ -329,13 +290,12 @@ export class ApiController {
               return res.json({ token, customerId: customer.id });
             }
           }
-          return res.status(400).json({ message: 'No OTP code requested for this mobile number or session expired.' });
+          return res.status(400).json({ message: 'No OTP code requested for this email address or session expired.' });
         }
 
         // Validate code and check expiry
         if (Date.now() > cachedEntry.expires) {
-          ApiController.otpCache.delete(mobileNumber.trim());
-          ApiController.otpCache.delete(cleanPhone);
+          ApiController.otpCache.delete(cleanEmail);
           return res.status(400).json({ message: 'OTP code has expired. Please request a new one.' });
         }
 
@@ -344,8 +304,7 @@ export class ApiController {
         }
 
         // Clean up cache entry
-        ApiController.otpCache.delete(mobileNumber.trim());
-        ApiController.otpCache.delete(cleanPhone);
+        ApiController.otpCache.delete(cleanEmail);
 
         const customer = await prisma.customer.findFirst({
           where: { id: cachedEntry.customerId }
@@ -361,49 +320,37 @@ export class ApiController {
         return res.json({ token, customerId: customer.id });
       }
 
-      res.status(400).json({ message: 'Please provide Track ID, Mobile Number + OTP, or Firebase Token' });
+      res.status(400).json({ message: 'Please provide Track ID or Email Address + OTP' });
     } catch (e: any) {
       res.status(500).json({ message: e.message });
     }
   }
 
-  // --- CHECK REGISTERED MOBILE NUMBER & GENERATE/SEND EMAIL OTP ---
-  static async checkMobileNumber(req: Request, res: Response) {
+  // --- CHECK REGISTERED EMAIL ADDRESS & GENERATE/SEND EMAIL OTP ---
+  static async checkEmailAddress(req: Request, res: Response) {
     try {
-      const { mobileNumber } = req.body;
-      if (!mobileNumber) {
-        return res.status(400).json({ message: 'Mobile number is required' });
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ message: 'Email address is required' });
       }
 
-      const cleanPhone = mobileNumber.replace(/^\+91/, '').trim();
+      const cleanEmail = email.toLowerCase().trim();
       const customer = await prisma.customer.findFirst({
         where: {
-          OR: [
-            { mobileNumber: mobileNumber.trim() },
-            { mobileNumber: cleanPhone }
-          ],
+          email: cleanEmail,
           isDeleted: false
         }
       });
 
       if (!customer) {
-        return res.status(404).json({ message: 'This mobile number is not registered under any job ticket.' });
-      }
-
-      if (!customer.email) {
-        return res.status(400).json({ message: 'No email address registered for this customer account to send OTP.' });
+        return res.status(404).json({ message: 'This email address is not registered under any customer account.' });
       }
 
       // Generate 6-Digit random OTP code
       const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-      ApiController.otpCache.set(mobileNumber.trim(), {
+      ApiController.otpCache.set(cleanEmail, {
         otp: otpCode,
         expires: Date.now() + 5 * 60 * 1000, // 5 min expiry
-        customerId: customer.id
-      });
-      ApiController.otpCache.set(cleanPhone, {
-        otp: otpCode,
-        expires: Date.now() + 5 * 60 * 1000,
         customerId: customer.id
       });
 

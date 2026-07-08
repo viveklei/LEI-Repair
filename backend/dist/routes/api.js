@@ -9,7 +9,7 @@ const router = (0, express_1.Router)();
 router.post('/auth/login', api_controller_1.ApiController.login);
 router.post('/auth/refresh', api_controller_1.ApiController.refreshToken);
 router.post('/portal/login', api_controller_1.ApiController.customerPortalLogin);
-router.post('/portal/check-mobile', api_controller_1.ApiController.checkMobileNumber);
+router.post('/portal/check-email', api_controller_1.ApiController.checkEmailAddress);
 router.get('/public/track/:trackId', api_controller_1.ApiController.getPublicJobStatus);
 // --- AUTHENTICATED PROFILE ---
 router.get('/auth/profile', auth_middleware_1.authenticateJWT, api_controller_1.ApiController.getProfile);
