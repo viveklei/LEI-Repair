@@ -217,19 +217,10 @@ const SpareParts: React.FC = () => {
     const dateFormatted = new Date().toLocaleDateString('en-GB').replace(/\//g, '.');
     const yearCode = new Date().getFullYear().toString().substring(2);
     
-    // Auto-generate order metrics
     const generatedPoNo = `LEIPO${yearCode}-${yearCode}/${Math.floor(Math.random() * 90 + 10)}`;
     const generatedRefNo = `AL${new Date().getFullYear()}${String(new Date().getMonth()+1).padStart(2,'0')}${String(new Date().getDate()).padStart(2,'0')}-001`;
 
-    const lowParts = parts
-      .filter(p => p.quantity <= p.stockLevel)
-      .map(p => ({
-        name: p.partName,
-        description: p.partNumber || '',
-        qty: p.stockLevel - p.quantity > 0 ? p.stockLevel - p.quantity : 1,
-        rate: p.cost || 0
-      }));
-
+    // Start with empty items list — user can manually add or use "Add All Out of Stock"
     setPoForm({
       poNumber: generatedPoNo,
       poDate: dateFormatted,
@@ -237,11 +228,27 @@ const SpareParts: React.FC = () => {
       placeOfSupply: 'Tamil Nadu (33)',
       vendorName: '',
       vendorAddress: '',
-      items: lowParts,
+      items: [],
       notes: 'Delivery of materials should be made within the said time bound, if not the supplier must take responsibility.\nMention GST no: 33AAGFL9943F1Z6 in Invoice.'
     });
 
     setShowPoModal(true);
+  };
+
+  const handleAddAllOutOfStock = () => {
+    const outOfStockItems = parts
+      .filter(p => p.quantity <= p.stockLevel)
+      .map(p => ({
+        name: p.partName,
+        description: p.partNumber || '',
+        qty: Math.max(p.stockLevel - p.quantity, 1),
+        rate: p.cost || 0
+      }));
+    if (outOfStockItems.length === 0) {
+      alert('No out-of-stock or low-stock items found!');
+      return;
+    }
+    setPoForm(prev => ({ ...prev, items: [...prev.items, ...outOfStockItems] }));
   };
 
   const handleGenerateCustomPo = async (e: React.FormEvent) => {
@@ -250,7 +257,8 @@ const SpareParts: React.FC = () => {
     try {
       const res = await api.post('/spare-parts/low-stock/pdf', poForm);
       if (res.data.pdfUrl) {
-        window.open(`http://localhost:5000${res.data.pdfUrl}`, '_blank');
+        const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
+        window.open(`${baseUrl}${res.data.pdfUrl}`, '_blank');
         setShowPoModal(false);
       }
     } catch (err: any) {
@@ -947,23 +955,36 @@ const SpareParts: React.FC = () => {
 
               {/* Row 3: Items List */}
               <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 space-y-3">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-center flex-wrap gap-2">
                   <h4 className="text-xs font-black text-slate-900 uppercase tracking-wider">Spares & Items Order List</h4>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPoForm({
-                        ...poForm,
-                        items: [...poForm.items, { name: '', description: '', qty: 1, rate: 0 }]
-                      });
-                    }}
-                    className="text-[10px] bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-blue-600 font-bold hover:bg-slate-50 cursor-pointer transition-all"
-                  >
-                    + Add Custom Item
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddAllOutOfStock}
+                      className="text-[10px] bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-lg text-amber-700 font-bold hover:bg-amber-100 cursor-pointer transition-all"
+                    >
+                      ⚠️ Add All Out of Stock
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPoForm(prev => ({
+                          ...prev,
+                          items: [...prev.items, { name: '', description: '', qty: 1, rate: 0 }]
+                        }));
+                        setTimeout(() => {
+                          const el = document.getElementById('po-items-list');
+                          if (el) el.scrollTop = el.scrollHeight;
+                        }, 50);
+                      }}
+                      className="text-[10px] bg-white border border-slate-200 px-2.5 py-1 rounded-lg text-blue-600 font-bold hover:bg-slate-50 cursor-pointer transition-all"
+                    >
+                      + Add Custom Item
+                    </button>
+                  </div>
                 </div>
 
-                <div className="space-y-2.5">
+                <div id="po-items-list" className="space-y-2.5 max-h-64 overflow-y-auto pr-1">
                   {poForm.items.map((item: any, idx: number) => (
                     <div key={idx} className="flex gap-2 items-start bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-2">
