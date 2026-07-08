@@ -283,12 +283,16 @@ export class ApiController {
             });
             const customer = customers.find(c => c.email.toLowerCase().trim() === cleanEmail);
             if (customer) {
+              const mostRecentJob = await prisma.serviceJob.findFirst({
+                where: { customerId: customer.id, isDeleted: false },
+                orderBy: { createdAt: 'desc' }
+              });
               const token = jwt.sign(
-                { id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id },
+                { id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id, jobId: mostRecentJob?.id },
                 JWT_SECRET,
                 { expiresIn: '2h' }
               );
-              return res.json({ token, customerId: customer.id });
+              return res.json({ token, customerId: customer.id, jobId: mostRecentJob?.id });
             }
           }
           return res.status(400).json({ message: 'No OTP code requested for this email address or session expired.' });
@@ -312,13 +316,18 @@ export class ApiController {
         });
         if (!customer) return res.status(404).json({ message: 'Customer account not found.' });
 
+        const mostRecentJob = await prisma.serviceJob.findFirst({
+          where: { customerId: customer.id, isDeleted: false },
+          orderBy: { createdAt: 'desc' }
+        });
+
         const token = jwt.sign(
-          { id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id },
+          { id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id, jobId: mostRecentJob?.id },
           JWT_SECRET,
           { expiresIn: '2h' }
         );
 
-        return res.json({ token, customerId: customer.id });
+        return res.json({ token, customerId: customer.id, jobId: mostRecentJob?.id });
       }
 
       res.status(400).json({ message: 'Please provide Track ID or Email Address + OTP' });
