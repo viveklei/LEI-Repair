@@ -32,28 +32,24 @@ async function main() {
       email: 'admin@fsrms.com',
       passwordHash: '$2a$10$6aJhm7CruJdus2ltm/nJRuDroWt3JRBb/n76fOA0M90pwHmtb.O1e',
       roleName: 'ADMIN',
-      isActive: true,
     },
     {
       name: 'Mohan',
       email: 'engineer@fsrms.com',
       passwordHash: '$2a$10$FlSdSZXWwjGoO.Tf4hvBp..IsWELo7S9jfDOEE/oInvaefYTBNXh.',
       roleName: 'ENGINEER',
-      isActive: true,
     },
     {
       name: 'Dinesh N',
       email: 'accounts@fsrms.com',
       passwordHash: '$2a$10$6aJhm7CruJdus2ltm/nJRuhtdI7HjNUn3BjRjkaT5U21LF.vY5kCq',
       roleName: 'ACCOUNTS',
-      isActive: true,
     },
     {
       name: 'Govindha',
       email: 'support@fsrms.com',
       passwordHash: '$2a$10$UHPVbDHHWLdk.29c4NAczeZVRB9Lqbow3QgeDYsjgZNt0Phy2.Z9.',
       roleName: 'SUPPORT',
-      isActive: true,
     },
   ];
 
@@ -63,8 +59,8 @@ async function main() {
 
     await prisma.user.upsert({
       where: { email: user.email },
-      update: { name: user.name, passwordHash: user.passwordHash, roleId: role.id, isActive: user.isActive },
-      create: { name: user.name, email: user.email, passwordHash: user.passwordHash, roleId: role.id, isActive: user.isActive },
+      update: { name: user.name, passwordHash: user.passwordHash, roleId: role.id, isDeleted: false },
+      create: { name: user.name, email: user.email, passwordHash: user.passwordHash, roleId: role.id, isDeleted: false },
     });
     console.log(`  [+] User: ${user.name} (${user.email}) - ${user.roleName}`);
   }
