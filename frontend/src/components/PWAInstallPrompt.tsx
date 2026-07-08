@@ -74,7 +74,7 @@ const PWAInstallPrompt: React.FC = () => {
         <div className="p-4">
           <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shrink-0 shadow-lg">
-              <img src="/favicon.png" className="w-7 h-7 object-contain" alt="LEI Repair" />
+              <img src="favicon.png" className="w-7 h-7 object-contain" alt="LEI Repair" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-sm text-white">Install LEI Repair</p>
