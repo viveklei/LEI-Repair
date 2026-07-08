@@ -55,11 +55,12 @@ USE_S3=false
 MOCK_WHATSAPP=true
 MOCK_EMAIL=false
 
-# SMTP Configurations for live emails
+# SMTP Configurations - SET THESE MANUALLY AFTER DEPLOYMENT
+# Run: nano /var/www/LEI-Repair/backend/.env
 SMTP_HOST=smtp.gmail.com
 SMTP_PORT=587
 SMTP_USER=laserexpertsindiaglobal@gmail.com
-SMTP_PASS=ekqdcxktamjrmcrt
+SMTP_PASS=YOUR_GMAIL_APP_PASSWORD_HERE
 SMTP_FROM="LEI Repair Portal" <laserexpertsindiaglobal@gmail.com>
 
 # Firebase Configuration
