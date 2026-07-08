@@ -81,8 +81,16 @@ if [ -f "seed_demo_jobs.js" ]; then
 fi
 
 # 7. Compile TypeScript to production Javascript
-echo "[*] Building application source code..."
+echo "[*] Building backend application source code..."
 npm run build
+
+# 7b. Install and compile frontend on the VPS
+echo "[*] Building frontend application source code..."
+cd /var/www/LEI-Repair/frontend
+npm install --legacy-peer-deps
+# Build the production files (these will be served by Nginx)
+VITE_API_URL=https://server1.leip.co.in/api npm run build
+cd /var/www/LEI-Repair/backend
 
 # 8. Setup PM2 process manager to run backend in background
 echo "[*] Configuring PM2 daemon manager..."
@@ -93,9 +101,23 @@ pm2 start dist/server.js --name lei-backend
 pm2 save
 sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $USER --hp $HOME
 
-# 9. Configure Nginx Reverse Proxy
-echo "[*] Generating Nginx site configuration..."
-sudo cat <<EOT > /etc/nginx/sites-available/default
+# 9. Configure Nginx Reverse Proxy (Isolated Config)
+echo "[*] Generating isolated Nginx site configuration..."
+sudo cat <<EOT > /etc/nginx/sites-available/fsrms.conf
+# 1. FRONTEND SERVER BLOCK
+server {
+    listen 80;
+    server_name frnd.leip.co.in;
+
+    root /var/www/LEI-Repair/frontend/dist;
+    index index.html;
+
+    location / {
+        try_files \$uri \$uri/ /index.html;
+    }
+}
+
+# 2. BACKEND API SERVER BLOCK
 server {
     listen 80;
     server_name server1.leip.co.in;
@@ -125,18 +147,21 @@ server {
 }
 EOT
 
+# Enable the isolated configuration safely
+sudo ln -sf /etc/nginx/sites-available/fsrms.conf /etc/nginx/sites-enabled/fsrms.conf
+
 # Restart Nginx to apply changes
 echo "[*] Restarting Nginx server..."
 sudo systemctl restart nginx
 
 # 10. Run Certbot to acquire SSL Certificates for HTTPS
 echo "======================================================================"
-echo "  [ACTION REQUIRED] Setting up SSL Certificate for server1.leip.co.in"
+echo "  [ACTION REQUIRED] Setting up SSL Certificate for domains"
 echo "======================================================================"
 echo "Let's Encrypt Certbot will now ask you to provide an email and agree"
 echo "to the terms of service to install your FREE SSL certificates."
 echo.
-sudo certbot --nginx -d server1.leip.co.in --non-interactive --agree-tos -m laserexpertsindiaglobal@gmail.com --redirect
+sudo certbot --nginx -d server1.leip.co.in -d frnd.leip.co.in --non-interactive --agree-tos -m laserexpertsindiaglobal@gmail.com --redirect
 
 # Reload Nginx with SSL enabled
 sudo systemctl reload nginx
