@@ -1,0 +1,360 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique // ADMIN, ENGINEER, ACCOUNTS, SUPPORT, CUSTOMER
+  description String?
+  users       User[]
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  employeeCode  String?        @unique
+  mobileNumber  String?
+  department    String?
+  roleId        String
+  role          Role           @relation(fields: [roleId], references: [id])
+  refreshToken  String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  isDeleted     Boolean        @default(false)
+  inspections   Inspection[]
+  quotations    Quotation[]
+  repairs       Repair[]
+  testResults   TestResult[]
+  serviceReports ServiceReport[]
+  auditLogs     AuditLog[]
+  overriddenPayments Payment[] @relation("AdminOverride")
+  qcAssessments QcAssessment[]
+  assignedJobs  ServiceJob[] @relation("CurrentEngineer")
+}
+
+model Customer {
+  id              String       @id @default(uuid())
+  companyName     String
+  customerName    String
+  mobileNumber    String
+  email           String
+  address         String       @default("")
+  billingAddress  String?
+  shippingAddress String?
+  billingState    String?
+  shippingState   String?
+  gstNumber       String?
+  contactPerson   String?
+  createdAt       DateTime     @default(now())
+  updatedAt       DateTime     @updatedAt
+  isDeleted       Boolean      @default(false)
+  serviceJobs     ServiceJob[]
+
+  @@index([customerName])
+  @@index([mobileNumber])
+}
+
+model LaserSource {
+  id                 String       @id @default(uuid())
+  brand              String       // IPG, Raycus, Maxphotonics, JPT, nLIGHT, BWT, Other
+  modelNumber        String
+  serialNumber       String       @unique
+  powerRating        String       // e.g. 1kW, 3kW, 6kW, etc.
+  mfgYear            Int
+  machineManufacturer String?
+  machineModel       String?
+  sourceType         String       // Single Module, Multi Module, etc.
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  isDeleted          Boolean      @default(false)
+  serviceJobs        ServiceJob[]
+
+  @@index([serialNumber])
+}
+
+model ServiceJob {
+  id                  String             @id @default(uuid())
+  trackId             String             @unique // Format: FSR-YEAR-SEQUENCE
+  customerId          String
+  customer            Customer           @relation(fields: [customerId], references: [id])
+  laserSourceId       String
+  laserSource         LaserSource        @relation(fields: [laserSourceId], references: [id])
+  complaintCategory   String             // No Laser Output, Low Output Power, QBH Damage, Fiber Break, Alarm Error, Module Failure, Cooling Issue, Water Leakage, Communication Failure, Beam Quality Issue, Optical Failure, Other
+  complaintDescription String
+  receivingNotes      String?
+  status              String             @default("RECEIVED") // RECEIVED, VISUAL_INSPECTION, INITIAL_DIAGNOSIS, QUOTATION_GENERATED, etc.
+  currentEngineerId   String?
+  currentEngineer     User?              @relation("CurrentEngineer", fields: [currentEngineerId], references: [id])
+  paymentStatus       String             @default("PENDING") // PENDING, PARTIAL, PAID
+  priority            String             @default("NORMAL")  // NORMAL, HIGH, URGENT
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+  isDeleted           Boolean            @default(false)
+  inspections         Inspection[]
+  quotations          Quotation[]
+  repairs             Repair[]
+  testResults         TestResult[]
+  serviceReports      ServiceReport[]
+  payments            Payment[]
+  dispatches          Dispatch[]
+  files               FileAttachment[]
+  feedback            Feedback[]
+  auditLogs           AuditLog[]
+  notifications       Notification[]
+  qcAssessment        QcAssessment?
+  comments            JobComment[]
+  verification        Verification?
+
+  @@index([trackId])
+}
+
+model Inspection {
+  id                String       @id @default(uuid())
+  jobId             String
+  job               ServiceJob   @relation(fields: [jobId], references: [id])
+  engineerId        String
+  engineer          User         @relation(fields: [engineerId], references: [id])
+  physicalCondition String
+  internalFindings  String
+  faultAnalysis     String
+  initialDiagnosis  String
+  inspectionNotes   String
+  createdAt         DateTime     @default(now())
+}
+
+model Quotation {
+  id              String           @id @default(uuid())
+  jobId           String
+  job             ServiceJob       @relation(fields: [jobId], references: [id])
+  creatorId       String
+  creator         User             @relation(fields: [creatorId], references: [id])
+  status          String           @default("PENDING_APPROVAL") // PENDING_APPROVAL, APPROVED, REJECTED
+  totalParts      Float
+  totalConsumables Float
+  totalLabour     Float
+  grandTotal      Float
+  rejectionReason String?
+  approvedBy      String?          // CUSTOMER, ADMIN, COORDINATOR
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  items           QuotationItem[]
+}
+
+model QuotationItem {
+  id           String    @id @default(uuid())
+  quotationId  String
+  quotation    Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+  name         String
+  category     String    // SPARE_PART, PUMP_DIODE, LASER_MODULE, OPTICAL_COMPONENT, QBH_COMPONENT, FIBER_COMPONENT, PCB_BOARD, CONSUMABLE, LABOUR
+  quantity     Int
+  unitCost     Float
+  totalCost    Float
+  partNumber   String?
+  hsnSac       String?
+  manufacturer String?
+}
+
+model Repair {
+  id             String                 @id @default(uuid())
+  jobId          String
+  job            ServiceJob             @relation(fields: [jobId], references: [id])
+  engineerId     String
+  engineer       User                   @relation(fields: [engineerId], references: [id])
+  repairNotes    String
+  repairDuration Int                    // In minutes
+  startStatus    String
+  endStatus      String
+  createdAt      DateTime               @default(now())
+  updatedAt      DateTime               @updatedAt
+  partsUsed      RepairSparePartUsed[]
+}
+
+model SparePart {
+  id           String                 @id @default(uuid())
+  partName     String
+  partNumber   String?
+  hsnSac       String?
+  description  String?
+  manufacturer String
+  quantity     Int
+  cost         Float
+  stockLevel   Int                    // Threshold for alert
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  repairsUsed  RepairSparePartUsed[]
+  logs         SparePartLog[]
+}
+
+model RepairSparePartUsed {
+  id          String    @id @default(uuid())
+  repairId    String
+  repair      Repair    @relation(fields: [repairId], references: [id], onDelete: Cascade)
+  sparePartId String
+  sparePart   SparePart @relation(fields: [sparePartId], references: [id])
+  quantity    Int
+
+  @@index([repairId])
+  @@index([sparePartId])
+}
+
+model SparePartLog {
+  id           String      @id @default(uuid())
+  sparePartId  String
+  sparePart    SparePart   @relation(fields: [sparePartId], references: [id], onDelete: Cascade)
+  changeType   String      // CONSUMED, ADDED, ADJUSTED
+  quantity     Int
+  referenceId  String?     // jobId or user id
+  remarks      String?     // Details e.g. "Used in repair FSR-2026-0005"
+  createdAt    DateTime    @default(now())
+
+  @@index([sparePartId])
+}
+
+model TestResult {
+  id                String       @id @default(uuid())
+  jobId             String
+  job               ServiceJob   @relation(fields: [jobId], references: [id])
+  engineerId        String
+  engineer          User         @relation(fields: [engineerId], references: [id])
+  outputPowerTest   String       // PASS/FAIL or measurements
+  stabilityTest     String
+  burnInTest        String
+  alarmVerification String
+  temperatureTest   String
+  communicationTest String
+  testNotes         String?
+  result            String       // PASS or FAIL
+  createdAt         DateTime     @default(now())
+}
+
+model ServiceReport {
+  id                 String       @id @default(uuid())
+  jobId              String
+  job                ServiceJob   @relation(fields: [jobId], references: [id])
+  engineerId         String
+  engineer           User         @relation(fields: [engineerId], references: [id])
+  faultFound         String
+  rootCauseAnalysis  String
+  repairActions      String
+  finalOutcome       String
+  signatureData      String?      // Base64 image
+  pdfUrl             String?
+  createdAt          DateTime     @default(now())
+}
+
+model Payment {
+  id                   String        @id @default(uuid())
+  jobId                String
+  job                  ServiceJob    @relation(fields: [jobId], references: [id])
+  invoiceNumber        String        @unique
+  invoiceDate          DateTime
+  invoiceAmount        Float
+  paidAmount           Float
+  dueAmount            Float
+  status               String        @default("PENDING") // PENDING, PARTIAL, PAID
+  overrideReason       String?
+  overriddenByAdminId  String?
+  adminOverride        User?         @relation("AdminOverride", fields: [overriddenByAdminId], references: [id])
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
+
+  @@index([invoiceNumber])
+}
+
+model Dispatch {
+  id             String     @id @default(uuid())
+  jobId          String
+  job            ServiceJob @relation(fields: [jobId], references: [id])
+  courierName    String
+  awbNumber      String
+  dispatchDate   DateTime   @default(now())
+  deliveryStatus String     // IN_TRANSIT, DELIVERED, etc.
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+}
+
+model FileAttachment {
+  id           String     @id @default(uuid())
+  jobId        String
+  job          ServiceJob @relation(fields: [jobId], references: [id])
+  fileUrl      String
+  fileType     String     // IMAGE, VIDEO, PDF
+  originalName String
+  createdAt    DateTime   @default(now())
+}
+
+model Feedback {
+  id        String     @id @default(uuid())
+  jobId     String
+  job       ServiceJob @relation(fields: [jobId], references: [id])
+  rating    Int
+  comment   String?
+  createdAt DateTime   @default(now())
+}
+
+model AuditLog {
+  id        String     @id @default(uuid())
+  jobId     String
+  job       ServiceJob @relation(fields: [jobId], references: [id])
+  userId    String
+  user      User       @relation(fields: [userId], references: [id])
+  oldStatus String
+  newStatus String
+  remarks   String?
+  timestamp DateTime   @default(now())
+}
+
+model Notification {
+  id         String     @id @default(uuid())
+  jobId      String
+  job        ServiceJob @relation(fields: [jobId], references: [id])
+  type       String     // WHATSAPP, EMAIL
+  recipient  String
+  message    String
+  sentStatus String     // PENDING, SENT, FAILED
+  sentAt     DateTime   @default(now())
+}
+
+model QcAssessment {
+  id             String      @id @default(uuid())
+  jobId          String      @unique
+  job            ServiceJob  @relation(fields: [jobId], references: [id])
+  engineerId     String
+  engineer       User        @relation(fields: [engineerId], references: [id])
+  assessmentData String      // Serialized JSON
+  pdfUrl         String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+}
+
+model JobComment {
+  id         String     @id @default(uuid())
+  jobId      String
+  job        ServiceJob @relation(fields: [jobId], references: [id])
+  sender     String     // CUSTOMER, STAFF
+  senderName String
+  message    String
+  createdAt  DateTime   @default(now())
+
+  @@index([jobId])
+}
+
+model Verification {
+  id               String      @id @default(uuid())
+  jobId            String      @unique
+  job              ServiceJob  @relation(fields: [jobId], references: [id])
+  status           String      @default("PENDING_APPROVAL") // PENDING_APPROVAL, APPROVED, REJECTED
+  runningCondition String      // OK, NOT_OK
+  verifiedBy       String
+  approvedBy       String
+  remark           String?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+}
