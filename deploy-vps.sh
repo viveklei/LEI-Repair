@@ -3,13 +3,10 @@
 #   LASER EXPERTS INDIA LLP - UBUNTU 24.04 VPS AUTOMATED DEPLOYMENT SCRIPT
 # ==============================================================================
 
-# Exit on error
-set -e
-
 echo "======================================================================"
 echo "  Starting Automated Production Deployment for server1.leip.co.in"
 echo "======================================================================"
-echo.
+echo ""
 
 # 1. Update system packages
 echo "[*] Updating system packages..."
@@ -156,11 +153,11 @@ sudo systemctl restart nginx
 
 # 10. Run Certbot to acquire SSL Certificates for HTTPS
 echo "======================================================================"
-echo "  [ACTION REQUIRED] Setting up SSL Certificate for domains"
+echo "  Setting up SSL Certificate for domains"
 echo "======================================================================"
 echo "Let's Encrypt Certbot will now ask you to provide an email and agree"
 echo "to the terms of service to install your FREE SSL certificates."
-echo.
+echo ""
 sudo certbot --nginx -d server1.leip.co.in -d frnd.leip.co.in --non-interactive --agree-tos -m laserexpertsindiaglobal@gmail.com --redirect
 
 # Reload Nginx with SSL enabled
