@@ -1,8 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Activity, ShieldAlert, Cpu, KeyRound, Smartphone } from 'lucide-react';
 import logoImg from '../assets/logo.png';
+import { auth } from '../config/firebase';
+import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
+import api from '../services/api';
 
 const Login: React.FC = () => {
   const { login, customerPortalLogin } = useAuth();
@@ -21,9 +24,24 @@ const Login: React.FC = () => {
   const [mobileNumber, setMobileNumber] = useState('');
   const [otp, setOtp] = useState('');
   const [otpSent, setOtpSent] = useState(false);
+  const [confirmationResult, setConfirmationResult] = useState<any>(null);
 
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    return () => {
+      // Clean up recaptcha verifier on unmount
+      if ((window as any).recaptchaVerifier) {
+        try {
+          (window as any).recaptchaVerifier.clear();
+          (window as any).recaptchaVerifier = null;
+        } catch (e) {
+          console.error(e);
+        }
+      }
+    };
+  }, []);
 
   const handleStaffSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,17 +67,56 @@ const Login: React.FC = () => {
         if (path) navigate(path);
       } else {
         if (!otpSent) {
-          // Send OTP mock
+          // Normalize phone number (E.164 format)
+          let formattedMobile = mobileNumber.trim();
+          if (!formattedMobile.startsWith('+')) {
+            // Remove leading zero if present
+            if (formattedMobile.startsWith('0')) {
+              formattedMobile = formattedMobile.slice(1);
+            }
+            formattedMobile = '+91' + formattedMobile; // default to India prefix +91
+          }
+
+          // First, check backend to see if the mobile number is registered
+          try {
+            await api.post('/portal/check-mobile', { mobileNumber: formattedMobile });
+          } catch (err: any) {
+            setError(err.response?.data?.message || 'Phone number is not registered under any job ticket.');
+            setLoading(false);
+            return;
+          }
+
+          // Setup invisible recaptcha verifier
+          if (!(window as any).recaptchaVerifier) {
+            (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+              size: 'invisible',
+              callback: () => {}
+            });
+          }
+          const verifier = (window as any).recaptchaVerifier;
+
+          // Request Firebase SMS OTP
+          const confirmation = await signInWithPhoneNumber(auth, formattedMobile, verifier);
+          setConfirmationResult(confirmation);
           setOtpSent(true);
-          alert('MOCK OTP code sent: 123456');
-          setLoading(false);
-          return;
+          setError(null);
+          alert('OTP Verification Code has been sent to ' + formattedMobile);
+        } else {
+          // Verify OTP code entered by the user
+          if (!confirmationResult) {
+            throw new Error('Authentication session lost. Please request a new OTP.');
+          }
+          const userCredential = await confirmationResult.confirm(otp.trim());
+          const firebaseToken = await userCredential.user.getIdToken();
+
+          // Log in on backend using the validated Firebase token
+          const path = await customerPortalLogin(undefined, mobileNumber, undefined, firebaseToken);
+          if (path) navigate(path);
         }
-        const path = await customerPortalLogin(undefined, mobileNumber, otp);
-        if (path) navigate(path);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Verification failed. Please try again.');
+      console.error(err);
+      setError(err.message || err.response?.data?.message || 'Verification failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -254,6 +311,7 @@ const Login: React.FC = () => {
                 )}
               </button>
             </div>
+            <div id="recaptcha-container"></div>
           </form>
         )}
       </div>

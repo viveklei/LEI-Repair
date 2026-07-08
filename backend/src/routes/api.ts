@@ -9,6 +9,7 @@ const router = Router();
 router.post('/auth/login', ApiController.login);
 router.post('/auth/refresh', ApiController.refreshToken);
 router.post('/portal/login', ApiController.customerPortalLogin);
+router.post('/portal/check-mobile', ApiController.checkMobileNumber);
 router.get('/public/track/:trackId', ApiController.getPublicJobStatus);
 
 // --- AUTHENTICATED PROFILE ---

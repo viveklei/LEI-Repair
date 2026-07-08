@@ -14,6 +14,18 @@ const notification_service_1 = require("../services/notification.service");
 const zoho_service_1 = require("../services/zoho.service");
 const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
+const app_1 = require("firebase-admin/app");
+const auth_1 = require("firebase-admin/auth");
+// Initialize Firebase Admin SDK
+try {
+    if ((0, app_1.getApps)().length === 0) {
+        (0, app_1.initializeApp)();
+        console.log('🔥 Firebase Admin SDK initialized successfully');
+    }
+}
+catch (e) {
+    console.warn('⚠️ Firebase Admin SDK failed to initialize: ' + e.message);
+}
 const JWT_SECRET = process.env.JWT_SECRET || 'fsrms_super_jwt_secret_key_2026';
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET || 'fsrms_super_jwt_refresh_secret_key_2026';
 // WebSocket broadcast helper
@@ -215,7 +227,7 @@ class ApiController {
     // --- CUSTOMER PORTAL ACCESS ---
     static async customerPortalLogin(req, res) {
         try {
-            const { trackId, mobileNumber, otp } = req.body;
+            const { trackId, mobileNumber, otp, firebaseToken } = req.body;
             // If Track ID is provided, locate it directly
             if (trackId) {
                 const job = await db_1.default.serviceJob.findFirst({
@@ -228,20 +240,80 @@ class ApiController {
                 const token = jsonwebtoken_1.default.sign({ id: 'portal', role: 'CUSTOMER', name: job.customer.customerName, jobId: job.id }, JWT_SECRET, { expiresIn: '2h' });
                 return res.json({ token, jobId: job.id });
             }
-            // If Mobile + OTP is provided
+            // If Firebase verification is used
+            if (firebaseToken) {
+                try {
+                    const decodedToken = await (0, auth_1.getAuth)().verifyIdToken(firebaseToken);
+                    const phone = decodedToken.phone_number; // e.g. +918210708134
+                    if (!phone) {
+                        return res.status(400).json({ message: 'Firebase token does not contain a phone number.' });
+                    }
+                    const cleanPhone = phone.replace(/^\+91/, '').trim();
+                    const customer = await db_1.default.customer.findFirst({
+                        where: {
+                            OR: [
+                                { mobileNumber: phone },
+                                { mobileNumber: cleanPhone }
+                            ],
+                            isDeleted: false
+                        }
+                    });
+                    if (!customer)
+                        return res.status(404).json({ message: 'Customer phone number not registered' });
+                    const token = jsonwebtoken_1.default.sign({ id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id }, JWT_SECRET, { expiresIn: '2h' });
+                    return res.json({ token, customerId: customer.id });
+                }
+                catch (fbErr) {
+                    return res.status(401).json({ message: 'Firebase verification failed: ' + fbErr.message });
+                }
+            }
+            // If Mock Mobile + OTP is provided (fallback for testing)
             if (mobileNumber && otp) {
                 if (otp !== '123456') {
                     return res.status(400).json({ message: 'Invalid OTP code' });
                 }
+                const cleanPhone = mobileNumber.replace(/^\+91/, '').trim();
                 const customer = await db_1.default.customer.findFirst({
-                    where: { mobileNumber, isDeleted: false }
+                    where: {
+                        OR: [
+                            { mobileNumber: mobileNumber.trim() },
+                            { mobileNumber: cleanPhone }
+                        ],
+                        isDeleted: false
+                    }
                 });
                 if (!customer)
                     return res.status(404).json({ message: 'Customer phone number not registered' });
                 const token = jsonwebtoken_1.default.sign({ id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id }, JWT_SECRET, { expiresIn: '2h' });
                 return res.json({ token, customerId: customer.id });
             }
-            res.status(400).json({ message: 'Please provide Track ID or Mobile Number + OTP' });
+            res.status(400).json({ message: 'Please provide Track ID, Mobile Number + OTP, or Firebase Token' });
+        }
+        catch (e) {
+            res.status(500).json({ message: e.message });
+        }
+    }
+    // --- CHECK REGISTERED MOBILE NUMBER ---
+    static async checkMobileNumber(req, res) {
+        try {
+            const { mobileNumber } = req.body;
+            if (!mobileNumber) {
+                return res.status(400).json({ message: 'Mobile number is required' });
+            }
+            const cleanPhone = mobileNumber.replace(/^\+91/, '').trim();
+            const customer = await db_1.default.customer.findFirst({
+                where: {
+                    OR: [
+                        { mobileNumber: mobileNumber.trim() },
+                        { mobileNumber: cleanPhone }
+                    ],
+                    isDeleted: false
+                }
+            });
+            if (!customer) {
+                return res.status(404).json({ message: 'This mobile number is not registered under any job ticket.' });
+            }
+            res.json({ success: true });
         }
         catch (e) {
             res.status(500).json({ message: e.message });
