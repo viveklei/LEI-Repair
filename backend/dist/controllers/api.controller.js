@@ -16,6 +16,7 @@ const path_1 = __importDefault(require("path"));
 const fs_1 = __importDefault(require("fs"));
 const app_1 = require("firebase-admin/app");
 const auth_1 = require("firebase-admin/auth");
+const nodemailer_1 = __importDefault(require("nodemailer"));
 // Initialize Firebase Admin SDK
 try {
     if ((0, app_1.getApps)().length === 0) {
@@ -117,6 +118,8 @@ const logAudit = async (jobId, userId, oldStatus, newStatus, remarks) => {
     });
 };
 class ApiController {
+    // Static memory cache for email OTP verifications
+    static otpCache = new Map();
     // --- AUTH CONTROLLERS ---
     static async login(req, res) {
         try {
@@ -267,23 +270,47 @@ class ApiController {
                     return res.status(401).json({ message: 'Firebase verification failed: ' + fbErr.message });
                 }
             }
-            // If Mock Mobile + OTP is provided (fallback for testing)
+            // Verify custom Email OTP code stored in server cache
             if (mobileNumber && otp) {
-                if (otp !== '123456') {
-                    return res.status(400).json({ message: 'Invalid OTP code' });
-                }
                 const cleanPhone = mobileNumber.replace(/^\+91/, '').trim();
-                const customer = await db_1.default.customer.findFirst({
-                    where: {
-                        OR: [
-                            { mobileNumber: mobileNumber.trim() },
-                            { mobileNumber: cleanPhone }
-                        ],
-                        isDeleted: false
+                const cachedEntry = ApiController.otpCache.get(mobileNumber.trim()) || ApiController.otpCache.get(cleanPhone);
+                // Fail-safe check
+                if (!cachedEntry) {
+                    // Allow default local testing fallback only if no OTP has been cached yet
+                    if (otp === '123456') {
+                        const customer = await db_1.default.customer.findFirst({
+                            where: {
+                                OR: [
+                                    { mobileNumber: mobileNumber.trim() },
+                                    { mobileNumber: cleanPhone }
+                                ],
+                                isDeleted: false
+                            }
+                        });
+                        if (customer) {
+                            const token = jsonwebtoken_1.default.sign({ id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id }, JWT_SECRET, { expiresIn: '2h' });
+                            return res.json({ token, customerId: customer.id });
+                        }
                     }
+                    return res.status(400).json({ message: 'No OTP code requested for this mobile number or session expired.' });
+                }
+                // Validate code and check expiry
+                if (Date.now() > cachedEntry.expires) {
+                    ApiController.otpCache.delete(mobileNumber.trim());
+                    ApiController.otpCache.delete(cleanPhone);
+                    return res.status(400).json({ message: 'OTP code has expired. Please request a new one.' });
+                }
+                if (cachedEntry.otp !== otp.trim()) {
+                    return res.status(400).json({ message: 'Invalid OTP code. Please try again.' });
+                }
+                // Clean up cache entry
+                ApiController.otpCache.delete(mobileNumber.trim());
+                ApiController.otpCache.delete(cleanPhone);
+                const customer = await db_1.default.customer.findFirst({
+                    where: { id: cachedEntry.customerId }
                 });
                 if (!customer)
-                    return res.status(404).json({ message: 'Customer phone number not registered' });
+                    return res.status(404).json({ message: 'Customer account not found.' });
                 const token = jsonwebtoken_1.default.sign({ id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id }, JWT_SECRET, { expiresIn: '2h' });
                 return res.json({ token, customerId: customer.id });
             }
@@ -293,7 +320,7 @@ class ApiController {
             res.status(500).json({ message: e.message });
         }
     }
-    // --- CHECK REGISTERED MOBILE NUMBER ---
+    // --- CHECK REGISTERED MOBILE NUMBER & GENERATE/SEND EMAIL OTP ---
     static async checkMobileNumber(req, res) {
         try {
             const { mobileNumber } = req.body;
@@ -313,7 +340,65 @@ class ApiController {
             if (!customer) {
                 return res.status(404).json({ message: 'This mobile number is not registered under any job ticket.' });
             }
-            res.json({ success: true });
+            if (!customer.email) {
+                return res.status(400).json({ message: 'No email address registered for this customer account to send OTP.' });
+            }
+            // Generate 6-Digit random OTP code
+            const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+            ApiController.otpCache.set(mobileNumber.trim(), {
+                otp: otpCode,
+                expires: Date.now() + 5 * 60 * 1000, // 5 min expiry
+                customerId: customer.id
+            });
+            ApiController.otpCache.set(cleanPhone, {
+                otp: otpCode,
+                expires: Date.now() + 5 * 60 * 1000,
+                customerId: customer.id
+            });
+            // Transmit OTP via real SMTP if configured
+            const useSMTP = process.env.SMTP_USER && process.env.SMTP_PASS;
+            if (useSMTP) {
+                try {
+                    const transporter = nodemailer_1.default.createTransport({
+                        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+                        port: parseInt(process.env.SMTP_PORT || '587'),
+                        secure: process.env.SMTP_PORT === '465',
+                        auth: {
+                            user: process.env.SMTP_USER,
+                            pass: process.env.SMTP_PASS
+                        }
+                    });
+                    await transporter.sendMail({
+                        from: process.env.SMTP_FROM || `"LEI Repair Portal" <${process.env.SMTP_USER}>`,
+                        to: customer.email,
+                        subject: 'LEI Repair Portal Login OTP',
+                        html: `
+              <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px;">
+                <h2 style="color: #0f172a; text-align: center;">LEI Repair Portal</h2>
+                <p>Hello <strong>${customer.customerName}</strong>,</p>
+                <p>You requested a login verification code for the Laser Equipment India (LEI) Repair portal.</p>
+                <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
+                  <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #0284c7;">${otpCode}</span>
+                </div>
+                <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 5 minutes. If you did not request this, please ignore this email.</p>
+                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
+                <p style="font-size: 10px; color: #94a3b8; text-align: center;">Laser Experts India LLP • Chennai</p>
+              </div>
+            `
+                    });
+                    console.log(`✉️ Real OTP email sent successfully to ${customer.email}`);
+                }
+                catch (mailErr) {
+                    console.error('❌ Failed to send real SMTP email:', mailErr.message);
+                }
+            }
+            // Log the OTP code anyway in notifications.log (so it is free and visible instantly)
+            const timestamp = new Date().toISOString();
+            const logEntry = `[${timestamp}] [OTP_EMAIL] To: ${customer.email} | Code: ${otpCode}\n`;
+            const logPath = path_1.default.join(__dirname, '..', '..', 'public', 'notifications.log');
+            fs_1.default.appendFileSync(logPath, logEntry);
+            console.log(`\n🔑 [OTP EMAIL CODE (FREE FALLBACK)] Sent to: ${customer.email} | Code: ${otpCode}\n`);
+            res.json({ success: true, email: customer.email });
         }
         catch (e) {
             res.status(500).json({ message: e.message });

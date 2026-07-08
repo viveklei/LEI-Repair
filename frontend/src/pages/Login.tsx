@@ -78,8 +78,9 @@ const Login: React.FC = () => {
           }
 
           // First, check backend to see if the mobile number is registered
+          let checkRes;
           try {
-            await api.post('/portal/check-mobile', { mobileNumber: formattedMobile });
+            checkRes = await api.post('/portal/check-mobile', { mobileNumber: formattedMobile });
           } catch (err: any) {
             setError(err.response?.data?.message || 'Phone number is not registered under any job ticket.');
             setLoading(false);
@@ -90,7 +91,8 @@ const Login: React.FC = () => {
             // Firebase is not configured, fall back to mock OTP flow
             setOtpSent(true);
             setError(null);
-            alert('MOCK OTP code sent: 123456');
+            const registeredEmail = checkRes.data.email || 'your registered email';
+            alert(`A verification code has been sent to your registered email: ${registeredEmail}. (You can also find it in your backend logs/notifications.log)`);
             setLoading(false);
             return;
           }
