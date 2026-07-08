@@ -383,21 +383,58 @@ export class ApiController {
             }
           });
 
+          const logoPath = path.join(__dirname, '..', '..', 'public', 'logo.png');
+          const hasLogo = fs.existsSync(logoPath);
+
           await transporter.sendMail({
             from: process.env.SMTP_FROM || `"LEI Repair Portal" <${process.env.SMTP_USER}>`,
             to: customer.email,
-            subject: 'LEI Repair Portal Login OTP',
+            subject: '🔒 LEI Repair Portal - Your Login OTP Code',
+            attachments: hasLogo ? [{
+              filename: 'logo.png',
+              path: logoPath,
+              cid: 'logo'
+            }] : [],
             html: `
-              <div style="font-family: sans-serif; padding: 20px; color: #333; max-width: 600px; margin: 0 auto; border: 1px solid #eee; border-radius: 10px;">
-                <h2 style="color: #0f172a; text-align: center;">LEI Repair Portal</h2>
-                <p>Hello <strong>${customer.customerName}</strong>,</p>
-                <p>You requested a login verification code for the Laser Equipment India (LEI) Repair portal.</p>
-                <div style="background-color: #f8fafc; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
-                  <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #0284c7;">${otpCode}</span>
+              <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 40px 20px; color: #334155; line-height: 1.6;">
+                <div style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0;">
+                  
+                  <!-- HEADER -->
+                  <div style="background-color: #0f172a; padding: 24px 30px; text-align: center; border-bottom: 3px solid #06b6d4;">
+                    ${hasLogo ? '<img src="cid:logo" alt="Laser Experts India Logo" style="height: 48px; width: auto; vertical-align: middle; margin-bottom: 8px;" />' : ''}
+                    <h2 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px;">LEI Repair Portal</h2>
+                  </div>
+
+                  <!-- CONTENT BODY -->
+                  <div style="padding: 40px 35px;">
+                    <p style="margin-top: 0; font-size: 16px; color: #1e293b;">Hello <strong>${customer.customerName}</strong>,</p>
+                    <p style="font-size: 15px; color: #475569;">You requested a login verification code to access the Laser Equipment India (LEI) Repair tracking portal.</p>
+                    
+                    <!-- OTP CARD -->
+                    <div style="background: linear-gradient(135deg, #f0fdfa 0%, #ecfeff 100%); border: 1px dashed #0891b2; padding: 24px; border-radius: 12px; text-align: center; margin: 30px 0;">
+                      <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #0891b2; font-weight: 700; margin-bottom: 8px;">Your One-Time Passcode</div>
+                      <span style="font-size: 32px; font-weight: 800; letter-spacing: 8px; color: #0f172a; font-family: monospace; display: block;">${otpCode}</span>
+                    </div>
+
+                    <p style="font-size: 13px; color: #64748b;">This verification code is valid for <strong>5 minutes</strong>. If you did not request this log in, please ignore this email safely.</p>
+                  </div>
+
+                  <!-- FOOTER DETAILS -->
+                  <div style="background-color: #f1f5f9; padding: 30px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569; text-align: center;">
+                    <div style="font-weight: 700; color: #0f172a; margin-bottom: 8px;">LASER EXPERTS INDIA LLP</div>
+                    <div style="margin-bottom: 12px; line-height: 1.4;">
+                      <strong>Main Office Address:</strong><br/>
+                      No. 27/3, Anumepalli, Begapalli Road,<br/>
+                      Zuzuvadi, Hosur, Tamil Nadu - 635 126
+                    </div>
+                    <div style="border-top: 1px dashed #cbd5e1; padding-top: 12px; margin-top: 12px;">
+                      <strong>Contact Support:</strong><br/>
+                      📞 +91 93810 72240 | ✉️ laserexpertsindiaglobal@gmail.com<br/>
+                      🌐 <a href="https://www.laserexpertsindia.com" target="_blank" style="color: #0891b2; text-decoration: none; font-weight: 600;">www.laserexpertsindia.com</a>
+                    </div>
+                  </div>
+
                 </div>
-                <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 5 minutes. If you did not request this, please ignore this email.</p>
-                <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="font-size: 10px; color: #94a3b8; text-align: center;">Laser Experts India LLP • Hosur</p>
               </div>
             `
           });
