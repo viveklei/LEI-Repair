@@ -167,9 +167,7 @@ const Login: React.FC = () => {
               </button>
             </div>
             
-            <div className="text-center text-xs text-slate-500">
-              Demo logins: admin@fsrms.com / Admin@123 • engineer@fsrms.com / Engineer@123
-            </div>
+
           </form>
         ) : (
           /* --- CUSTOMER PORTAL TRACK FORM --- */
