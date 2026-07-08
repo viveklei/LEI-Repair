@@ -29,7 +29,7 @@ function allBorders(color = BORDER_COLOR): Partial<ExcelJS.Borders> {
 /** Fetches the company logo as a base64 string */
 async function fetchLogoBase64(): Promise<string | null> {
   try {
-    const res = await fetch('/logo.png');
+    const res = await fetch('logo.png');
     const blob = await res.blob();
     return new Promise((resolve) => {
       const reader = new FileReader();

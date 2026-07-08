@@ -73,7 +73,7 @@ const Login: React.FC = () => {
       <div className="max-w-md w-full space-y-8 bg-slate-800 p-8 rounded-2xl shadow-2xl border border-slate-700 relative z-10 animate-fade-in">
         <div className="text-center">
           <div className="inline-flex mb-4">
-            <img src="/logo.png" className="h-20 w-20 object-contain rounded-2xl border border-slate-700 bg-slate-900/50 p-2 shadow-inner" alt="LEI Repair Logo" />
+            <img src="logo.png" className="h-20 w-20 object-contain rounded-2xl border border-slate-700 bg-slate-900/50 p-2 shadow-inner" alt="LEI Repair Logo" />
           </div>
           <h2 className="text-3xl font-extrabold text-white tracking-tight">LEI Repair</h2>
           <p className="mt-1 text-sm text-slate-400">
