@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { Activity, ShieldAlert, Cpu, KeyRound, Smartphone } from 'lucide-react';
 import logoImg from '../assets/logo.png';
-import { auth } from '../config/firebase';
+import { auth, isFirebaseConfigured } from '../config/firebase';
 import { RecaptchaVerifier, signInWithPhoneNumber } from 'firebase/auth';
 import api from '../services/api';
 
@@ -86,6 +86,15 @@ const Login: React.FC = () => {
             return;
           }
 
+          if (!isFirebaseConfigured) {
+            // Firebase is not configured, fall back to mock OTP flow
+            setOtpSent(true);
+            setError(null);
+            alert('MOCK OTP code sent: 123456');
+            setLoading(false);
+            return;
+          }
+
           // Setup invisible recaptcha verifier
           if (!(window as any).recaptchaVerifier) {
             (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
@@ -102,6 +111,13 @@ const Login: React.FC = () => {
           setError(null);
           alert('OTP Verification Code has been sent to ' + formattedMobile);
         } else {
+          if (!isFirebaseConfigured) {
+            // Verify mock OTP directly on backend
+            const path = await customerPortalLogin(undefined, mobileNumber, otp);
+            if (path) navigate(path);
+            return;
+          }
+
           // Verify OTP code entered by the user
           if (!confirmationResult) {
             throw new Error('Authentication session lost. Please request a new OTP.');

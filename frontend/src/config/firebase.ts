@@ -10,6 +10,21 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-export const auth = getAuth(app);
+export const isFirebaseConfigured = !!firebaseConfig.apiKey && firebaseConfig.apiKey !== 'undefined';
+
+// Initialize Firebase only if config is loaded
+let app;
+let auth: any = null;
+
+if (isFirebaseConfigured) {
+  try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+  } catch (e) {
+    console.error('Firebase initialization failed:', e);
+  }
+} else {
+  console.warn('⚠️ Firebase credentials not configured. Falling back to Mock OTP mode.');
+}
+
+export { auth };

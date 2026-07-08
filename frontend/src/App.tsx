@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
 import Navigation from './components/Navigation';
@@ -40,7 +40,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode; allowedRoles?: strin
 
   if (!user) return <Navigate to="/login" replace />;
 
-  if (isPortal && !window.location.pathname.startsWith('/portal')) {
+  if (isPortal && !window.location.hash.startsWith('#/portal') && !window.location.pathname.startsWith('/portal')) {
     return <Navigate to={`/portal/job/${localStorage.getItem('portalJobId')}`} replace />;
   }
 
