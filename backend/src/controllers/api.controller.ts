@@ -278,9 +278,10 @@ export class ApiController {
         if (!cachedEntry) {
           // Allow default local testing fallback (123456) only if no OTP has been cached yet
           if (otp === '123456') {
-            const customer = await prisma.customer.findFirst({
-              where: { email: cleanEmail, isDeleted: false }
+            const customers = await prisma.customer.findMany({
+              where: { isDeleted: false }
             });
+            const customer = customers.find(c => c.email.toLowerCase().trim() === cleanEmail);
             if (customer) {
               const token = jwt.sign(
                 { id: 'portal', role: 'CUSTOMER', name: customer.customerName, customerId: customer.id },
@@ -335,12 +336,10 @@ export class ApiController {
       }
 
       const cleanEmail = email.toLowerCase().trim();
-      const customer = await prisma.customer.findFirst({
-        where: {
-          email: cleanEmail,
-          isDeleted: false
-        }
+      const customers = await prisma.customer.findMany({
+        where: { isDeleted: false }
       });
+      const customer = customers.find(c => c.email.toLowerCase().trim() === cleanEmail);
 
       if (!customer) {
         return res.status(404).json({ message: 'This email address is not registered under any customer account.' });
@@ -353,6 +352,13 @@ export class ApiController {
         expires: Date.now() + 5 * 60 * 1000, // 5 min expiry
         customerId: customer.id
       });
+      if (customer.email) {
+        ApiController.otpCache.set(customer.email.toLowerCase().trim(), {
+          otp: otpCode,
+          expires: Date.now() + 5 * 60 * 1000,
+          customerId: customer.id
+        });
+      }
 
       // Transmit OTP via real SMTP if configured
       const useSMTP = process.env.SMTP_USER && process.env.SMTP_PASS;
