@@ -4,7 +4,7 @@ import logoImg from '../assets/logo.png';
 
 // --- Company Constants ---------------------------------------------------------
 const CO_NAME    = 'LASER EXPERTS INDIA LLP';
-const CO_ADDRESS = 'No. 18/5, Trustpuram 1st Cross, Kodambakkam, Chennai - 600 024';
+const CO_ADDRESS = 'No. 27/3, Anumepalli, Begapalli Road, Zuzuvadi, Hosur, Tamil Nadu - 635 126';
 const CO_GST     = 'GSTIN: 33AAGFL9943F1Z6';
 const CO_PHONE   = '+91 93810 72240';
 const CO_EMAIL   = 'laserexpertsindia@gmail.com';

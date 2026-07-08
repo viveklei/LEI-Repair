@@ -397,7 +397,7 @@ export class ApiController {
                 </div>
                 <p style="font-size: 12px; color: #64748b;">This OTP code is valid for 5 minutes. If you did not request this, please ignore this email.</p>
                 <hr style="border: 0; border-top: 1px solid #eee; margin: 20px 0;">
-                <p style="font-size: 10px; color: #94a3b8; text-align: center;">Laser Experts India LLP • Chennai</p>
+                <p style="font-size: 10px; color: #94a3b8; text-align: center;">Laser Experts India LLP • Hosur</p>
               </div>
             `
           });
