@@ -86,7 +86,7 @@ echo "[*] Building frontend application source code..."
 cd /var/www/LEI-Repair/frontend
 npm install --legacy-peer-deps
 # Build the production files (these will be served by Nginx)
-VITE_API_URL=https://server1.leip.co.in/api npm run build
+VITE_API_URL=https://frnd.leip.co.in/api npm run build
 cd /var/www/LEI-Repair/backend
 
 # 8. Setup PM2 process manager to run backend in background
@@ -98,27 +98,19 @@ pm2 start dist/server.js --name lei-backend
 pm2 save
 sudo env PATH=$PATH:/usr/bin /usr/lib/node_modules/pm2/bin/pm2 startup systemd -u $USER --hp $HOME
 
-# 9. Configure Nginx Reverse Proxy (Isolated Config)
+# 9. Configure Nginx Reverse Proxy (Isolated Config - Single Domain)
 echo "[*] Generating isolated Nginx site configuration..."
 sudo cat <<EOT > /etc/nginx/sites-available/fsrms.conf
-# 1. FRONTEND SERVER BLOCK
+# SINGLE DOMAIN: frontend + API all under frnd.leip.co.in
 server {
     listen 80;
     server_name frnd.leip.co.in;
 
+    # Serve React frontend
     root /var/www/LEI-Repair/frontend/dist;
     index index.html;
 
-    location / {
-        try_files \$uri \$uri/ /index.html;
-    }
-}
-
-# 2. BACKEND API SERVER BLOCK
-server {
-    listen 80;
-    server_name server1.leip.co.in;
-
+    # Backend API proxy
     location /api/ {
         proxy_pass http://127.0.0.1:5000/api/;
         proxy_http_version 1.1;
@@ -126,13 +118,12 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
         proxy_cache_bypass \$http_upgrade;
-        
-        # CORS headers for API calls
         add_header 'Access-Control-Allow-Origin' '*' always;
         add_header 'Access-Control-Allow-Methods' 'GET, POST, PUT, DELETE, OPTIONS' always;
         add_header 'Access-Control-Allow-Headers' 'Authorization, Content-Type, Accept' always;
     }
 
+    # Socket.IO proxy
     location /socket.io/ {
         proxy_pass http://127.0.0.1:5000/socket.io/;
         proxy_http_version 1.1;
@@ -140,6 +131,11 @@ server {
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host \$host;
         proxy_cache_bypass \$http_upgrade;
+    }
+
+    # All other routes go to React (SPA support)
+    location / {
+        try_files \$uri \$uri/ /index.html;
     }
 }
 EOT
@@ -158,14 +154,15 @@ echo "======================================================================"
 echo "Let's Encrypt Certbot will now ask you to provide an email and agree"
 echo "to the terms of service to install your FREE SSL certificates."
 echo ""
-sudo certbot --nginx -d server1.leip.co.in -d frnd.leip.co.in --non-interactive --agree-tos -m laserexpertsindiaglobal@gmail.com --redirect
+sudo certbot --nginx -d frnd.leip.co.in --non-interactive --agree-tos -m laserexpertsindiaglobal@gmail.com --redirect
 
 # Reload Nginx with SSL enabled
 sudo systemctl reload nginx
 
 echo "======================================================================"
 echo "  [SUCCESS] DEPLOYMENT COMPLETED SUCCESSFULLY!"
-echo "  - Backend Secure API Endpoint: https://server1.leip.co.in/api"
+echo "  - App URL:      https://frnd.leip.co.in"
+echo "  - API Endpoint: https://frnd.leip.co.in/api"
 echo "  - PM2 Status Page:"
 pm2 status
 echo "======================================================================"
