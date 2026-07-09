@@ -20,24 +20,21 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
   const [scannerId] = useState(() => `qr-reader-container-${Math.random().toString(36).substring(2, 9)}`);
 
   const handleQRDetected = async (raw: string) => {
-    // Stop scanner first to avoid duplicate fires
-    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
-      try {
-        await html5QrCodeRef.current.stop();
-      } catch (err) {
-        console.error('Failed to stop scanner:', err);
-      }
-    }
+    // Alert user that scanning worked
+    console.log('Decoded text matches: ', raw);
 
     // If a custom callback is provided, route it there (for form auto-filling)
     if (onScanSuccess) {
+      if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+        try { await html5QrCodeRef.current.stop(); } catch (err) {}
+      }
       onScanSuccess(raw);
       onClose();
       return;
     }
 
     // Parse out Track ID from QR value
-    // QR can be raw text 'FRND-2026-0009' or full URL like 'https://domain.com/track/FRND-2026-0009'
+    // QR can be raw text 'FRND-2026-0008' or full URL like 'https://domain.com/track/FRND-2026-0008'
     let trackId = '';
     const match = raw.match(/FRND-\d{4}-\d+/i);
     if (match) {
@@ -51,9 +48,17 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
     }
 
     if (!trackId) {
-      toast.error('Invalid QR Code', 'Could not detect a valid ticket Tracking ID.');
-      onClose();
+      toast.error('Invalid QR Code', `Raw scanned text was: "${raw.substring(0, 30)}..."`);
       return;
+    }
+
+    // Stop scanner first to avoid duplicate fires while loading
+    if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
+      try {
+        await html5QrCodeRef.current.stop();
+      } catch (err) {
+        console.error('Failed to stop scanner:', err);
+      }
     }
 
     toast.success('Sticker Scanned', `Locating job ${trackId}...`);
@@ -84,8 +89,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
         html5QrCode.start(
           { facingMode: 'environment' },
           {
-            fps: 15, // Higher scanning frequency for snappier response
-            // No strict square restriction on qrbox so it can scan regardless of size/rotation
+            fps: 15,
             qrbox: (width, height) => {
               const size = Math.min(width, height) * 0.85;
               return { width: size, height: size };
