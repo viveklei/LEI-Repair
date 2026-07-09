@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Camera, AlertTriangle, RefreshCw } from 'lucide-react';
+import { X, Camera, AlertTriangle } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
@@ -10,11 +10,9 @@ interface QRScannerModalProps {
 
 export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
-  const [scanning, setScanning] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -23,142 +21,125 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
     streamRef.current?.getTracks().forEach(t => t.stop());
   }, []);
 
-  const handleQRDetected = useCallback(async (trackId: string) => {
-    setScanning(false);
+  const handleQRDetected = useCallback(async (raw: string) => {
     stopCamera();
-    toast.success('Sticker Detected', `Scanning details for ${trackId}...`);
+    const match = raw.match(/([A-Z]+-\d{4}-\d+)/i);
+    if (!match) {
+      toast.error('Invalid QR', 'No valid Track ID found in this QR code.');
+      onClose();
+      return;
+    }
+    const trackId = match[0].toUpperCase();
+    toast.success('Detected!', `Looking up ${trackId}...`);
     try {
       const res = await api.get(`/jobs/track/${trackId}`);
-      if (res.data.jobId) {
-        navigate(`/jobs/${res.data.jobId}`);
-      } else {
-        toast.error('Not Found', `No active ticket matched ${trackId}`);
-      }
+      if (res.data.jobId) navigate(`/jobs/${res.data.jobId}`);
+      else toast.error('Not Found', `No ticket for ${trackId}`);
     } catch (err: any) {
-      toast.error('Lookup Failed', err.response?.data?.message || 'Could not fetch job info.');
+      toast.error('Error', err.response?.data?.message || 'Lookup failed');
     } finally {
       onClose();
     }
   }, [stopCamera, toast, navigate, onClose]);
 
   useEffect(() => {
-    const startCamera = async () => {
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
-          audio: false,
-        });
-        streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          await videoRef.current.play();
-        }
-
-        // Use BarcodeDetector if available (modern browsers)
-        const BD = (window as any).BarcodeDetector;
-        if (BD) {
-          const detector = new BD({ formats: ['qr_code'] });
-          intervalRef.current = window.setInterval(async () => {
-            if (!videoRef.current || !scanning) return;
-            try {
-              const codes = await detector.detect(videoRef.current);
-              if (codes.length > 0) {
-                const raw = codes[0].rawValue as string;
-                const match = raw.match(/([A-Z]+-\d{4}-\d+)/i);
-                if (match) handleQRDetected(match[0].toUpperCase());
-              }
-            } catch (_) {}
-          }, 300);
-        } else {
-          // Fallback: canvas-based polling
-          const canvas = canvasRef.current;
-          if (!canvas) return;
-          const ctx = canvas.getContext('2d');
-          intervalRef.current = window.setInterval(() => {
-            const video = videoRef.current;
-            if (!video || !ctx || !scanning) return;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            ctx.drawImage(video, 0, 0);
-          }, 500);
-        }
-      } catch (err: any) {
-        setErrorMsg('Camera access denied. Please allow camera permission and try again.');
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' } },
+      audio: false,
+    }).then(stream => {
+      streamRef.current = stream;
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
       }
-    };
-
-    startCamera();
+      const BD = (window as any).BarcodeDetector;
+      if (BD) {
+        const detector = new BD({ formats: ['qr_code'] });
+        intervalRef.current = window.setInterval(async () => {
+          if (!videoRef.current) return;
+          try {
+            const codes = await detector.detect(videoRef.current);
+            if (codes.length > 0) handleQRDetected(codes[0].rawValue);
+          } catch (_) {}
+        }, 400);
+      }
+    }).catch(() => {
+      setErrorMsg('Camera access denied. Please allow camera permission.');
+    });
     return () => stopCamera();
   }, []);
 
   return (
-    // Full-screen dark backdrop
-    <div style={{
-      position: 'fixed', inset: 0, zIndex: 99999,
-      backgroundColor: 'rgba(0,0,0,0.85)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '16px',
-    }}>
-      {/* Modal card — fixed size, always centered */}
+    <>
+      {/* Backdrop */}
+      <div
+        onClick={onClose}
+        style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 99998 }}
+      />
+
+      {/* Modal — centered using transform trick, guaranteed to work */}
       <div style={{
-        backgroundColor: 'white', borderRadius: '24px', width: '100%',
-        maxWidth: '360px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.4)',
-        display: 'flex', flexDirection: 'column',
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        transform: 'translate(-50%, -50%)',
+        zIndex: 99999,
+        width: '90vw',
+        maxWidth: '360px',
+        backgroundColor: '#fff',
+        borderRadius: '24px',
+        overflow: 'hidden',
+        boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
       }}>
         {/* Header */}
-        <div style={{ backgroundColor: '#0f172a', color: 'white', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
-            <Camera size={16} style={{ color: '#22d3ee' }} />
+        <div style={{ backgroundColor: '#0f172a', color: '#fff', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            <Camera size={15} style={{ color: '#22d3ee' }} />
             Scan Inward Sticker QR
           </div>
-          <button onClick={onClose} style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
-            <X size={20} />
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
+            <X size={18} />
           </button>
         </div>
 
-        {/* Camera / Error area */}
-        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+        {/* Body */}
+        <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
           {errorMsg ? (
-            <div style={{ padding: '20px', backgroundColor: '#fff1f2', borderRadius: '16px', textAlign: 'center', color: '#be123c', fontSize: '12px', fontWeight: 600 }}>
-              <AlertTriangle size={32} style={{ margin: '0 auto 8px' }} />
+            <div style={{ padding: 16, backgroundColor: '#fff1f2', borderRadius: 14, textAlign: 'center', color: '#be123c', fontSize: 12, fontWeight: 600 }}>
+              <AlertTriangle size={28} style={{ margin: '0 auto 8px' }} />
               <p>{errorMsg}</p>
-              <button onClick={onClose} style={{ marginTop: '12px', padding: '8px 16px', backgroundColor: '#0f172a', color: 'white', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}>
-                Close
-              </button>
             </div>
           ) : (
             <>
-              {/* Video element — we fully control this, no library injections */}
-              <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#000', position: 'relative' }}>
+              <div style={{ width: '100%', height: 260, backgroundColor: '#000', borderRadius: 14, overflow: 'hidden', position: 'relative' }}>
                 <video
                   ref={videoRef}
                   playsInline
                   muted
-                  style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }}
+                  style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
-                {/* Scan frame overlay */}
-                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <div style={{ width: '180px', height: '180px', border: '2px solid #22d3ee', borderRadius: '12px', boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }} />
+                {/* Scan frame */}
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                  <div style={{ width: 170, height: 170, border: '2.5px solid #22d3ee', borderRadius: 12, boxShadow: '0 0 0 9999px rgba(0,0,0,0.35)' }} />
                 </div>
               </div>
-              <canvas ref={canvasRef} style={{ display: 'none' }} />
-              <p style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', textAlign: 'center' }}>
-                Align QR Code within the scanning frame
+              <p style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>
+                Align QR Code within the frame
               </p>
             </>
           )}
         </div>
 
         {/* Footer */}
-        <div style={{ padding: '12px 20px 20px', display: 'flex', justifyContent: 'flex-end' }}>
+        <div style={{ padding: '4px 18px 18px', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
-            style={{ padding: '8px 20px', backgroundColor: '#0f172a', color: 'white', borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}
+            style={{ padding: '8px 20px', backgroundColor: '#0f172a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
           >
             Cancel
           </button>
         </div>
       </div>
-    </div>
+    </>
   );
 };
