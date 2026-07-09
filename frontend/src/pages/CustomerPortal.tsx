@@ -235,7 +235,24 @@ const CustomerPortal: React.FC = () => {
                         <span className="font-bold">Carrier:</span> {courier}
                       </p>
                       <p className="text-[10px] text-slate-600">
-                        <span className="font-bold">AWB / Ref No:</span> <code className="bg-slate-200 px-1 py-0.5 rounded text-slate-800 font-mono font-bold">{awb}</code>
+                        <span className="font-bold">AWB / Ref No:</span>{' '}
+                        <a 
+                          href={
+                            courier.toLowerCase().includes('blue dart') ? `https://www.bluedart.com/tracking?trackid=${awb}` :
+                            courier.toLowerCase().includes('dhl') ? `https://www.dhl.com/en/express/tracking.html?AWB=${awb}` :
+                            courier.toLowerCase().includes('fedex') ? `https://www.fedex.com/apps/fedextrack/?tracknumbers=${awb}` :
+                            courier.toLowerCase().includes('dtdc') ? `https://www.dtdc.in/tracking/shipment-tracking.xhtml?shipmentNumber=${awb}` :
+                            courier.toLowerCase().includes('st courier') ? `https://stcourier.com/track/shipment?awb=${awb}` :
+                            '#'
+                          }
+                          target="_blank"
+                          rel="noreferrer"
+                          className="hover:underline cursor-pointer group"
+                        >
+                          <code className="bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 font-extrabold px-1.5 py-0.5 rounded font-mono transition-colors">
+                            {awb} 🔗
+                          </code>
+                        </a>
                       </p>
                     </div>
 
