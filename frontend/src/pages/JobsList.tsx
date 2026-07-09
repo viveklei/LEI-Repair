@@ -44,6 +44,8 @@ const JobsList: React.FC = () => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [showQrScanner, setShowQrScanner] = useState(false);
+  const [showStickerModal, setShowStickerModal] = useState(false);
+  const [newCreatedJob, setNewCreatedJob] = useState<any>(null);
   
   // Registration Form
   const [formData, setFormData] = useState({
@@ -380,10 +382,15 @@ const JobsList: React.FC = () => {
     }
 
     try {
-      await api.post('/jobs', fd, {
+      const res = await api.post('/jobs', fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       setShowModal(false);
+      
+      // Save created job payload and display Print Sticker confirmation modal
+      setNewCreatedJob(res.data);
+      setShowStickerModal(true);
+
       // Reset form
       setFormData({
         companyName: '',
@@ -1238,6 +1245,52 @@ const JobsList: React.FC = () => {
           onClose={() => setShowQrScanner(false)} 
           onScanSuccess={handleInwardQrSuccess} 
         />, 
+        document.body
+      )}
+
+      {/* Success Inward Print Sticker dialog modal */}
+      {showStickerModal && newCreatedJob && createPortal(
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl border border-slate-100 p-6 max-w-sm w-full text-center space-y-5 shadow-2xl animate-fade-in">
+            <div className="h-12 w-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center mx-auto">
+              <Check className="h-6 w-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-black text-slate-900">Job Registered Successfully</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Ticket <span className="font-extrabold text-blue-600 font-mono">{newCreatedJob.trackId}</span> has been logged. Print the barcode label sticker for the laser source cabinet now.
+              </p>
+            </div>
+            
+            <div className="border border-slate-100 rounded-2xl p-4 bg-slate-50/50 flex flex-col items-center">
+              <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider mb-1">Print Preview details</span>
+              <p className="text-xs font-bold text-slate-800">{newCreatedJob.laserSource.brand} | {newCreatedJob.laserSource.powerRating}</p>
+              <p className="text-[10px] text-slate-500 mt-0.5">SN: {newCreatedJob.laserSource.serialNumber}</p>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowStickerModal(false);
+                  setNewCreatedJob(null);
+                }}
+                className="flex-1 border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold py-2 rounded-xl text-xs transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+              <button
+                onClick={() => {
+                  handlePrintSticker(newCreatedJob);
+                  setShowStickerModal(false);
+                  setNewCreatedJob(null);
+                }}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 rounded-xl text-xs transition-colors cursor-pointer shadow-md shadow-blue-500/10"
+              >
+                🖨️ Print Sticker
+              </button>
+            </div>
+          </div>
+        </div>,
         document.body
       )}
     </div>
