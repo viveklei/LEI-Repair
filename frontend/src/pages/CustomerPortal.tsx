@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { socket } from '../services/socket';
+import { fileUrl } from '../utils/urls';
 import { useAuth } from '../context/AuthContext';
 import { 
   Wrench, 
@@ -242,7 +243,7 @@ const CustomerPortal: React.FC = () => {
                     <div key={file.id} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 transition-colors text-left">
                       <div className="flex items-center gap-2 overflow-hidden mr-2">
                         {isImg ? (
-                          <img src={`http://localhost:5000${file.fileUrl}`} className="h-8 w-8 object-cover rounded-lg border border-slate-200 shrink-0" />
+                          <img src={fileUrl(file.fileUrl)} className="h-8 w-8 object-cover rounded-lg border border-slate-200 shrink-0" />
                         ) : (
                           <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[10px] shrink-0 border border-blue-100">PDF</div>
                         )}
@@ -251,7 +252,7 @@ const CustomerPortal: React.FC = () => {
                         </span>
                       </div>
                       <a
-                        href={`http://localhost:5000${file.fileUrl}`}
+                        href={fileUrl(file.fileUrl)}
                         target="_blank"
                         rel="noreferrer"
                         className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-lg transition-colors shrink-0"
@@ -376,7 +377,7 @@ const CustomerPortal: React.FC = () => {
                     onClick={async () => {
                       try {
                         const res = await api.get(`/quotation/${job.quotations[0].id}/pdf`);
-                        window.open(`http://localhost:5000${res.data.pdfUrl}`, '_blank');
+                        window.open(fileUrl(res.data.pdfUrl), '_blank');
                       } catch (e) {
                         alert('Failed to download quotation PDF');
                       }
@@ -395,7 +396,7 @@ const CustomerPortal: React.FC = () => {
                     <p className="text-[10px] text-slate-500">Validation: PASSED</p>
                   </div>
                   <a
-                    href={`http://localhost:5000${job.serviceReports[0].pdfUrl}`}
+                    href={fileUrl(job.serviceReports[0].pdfUrl)}
                     target="_blank" rel="noreferrer"
                     className="p-2 bg-white rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600"
                   >
@@ -480,7 +481,7 @@ const CustomerPortal: React.FC = () => {
                   }).map((file: any) => (
                     <div key={file.id} className="relative aspect-video rounded-xl overflow-hidden border border-slate-100 bg-slate-50">
                       <img 
-                        src={`http://localhost:5000${file.fileUrl}`} 
+                        src={fileUrl(file.fileUrl)} 
                         alt={file.originalName} 
                         className="object-cover w-full h-full"
                       />
