@@ -1084,7 +1084,8 @@ export class ApiController {
             select: {
               companyName: true
             }
-          }
+          },
+          dispatches: true
         }
       });
 
