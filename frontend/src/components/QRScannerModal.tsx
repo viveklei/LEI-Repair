@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
+import ReactDOM from 'react-dom';
 import { X, Camera, AlertTriangle } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
@@ -25,9 +26,8 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
     stopCamera();
     const match = raw.match(/([A-Z]+-\d{4}-\d+)/i);
     if (!match) {
-      toast.error('Invalid QR', 'No valid Track ID found in this QR code.');
-      onClose();
-      return;
+      toast.error('Invalid QR', 'No valid Track ID found.');
+      onClose(); return;
     }
     const trackId = match[0].toUpperCase();
     toast.success('Detected!', `Looking up ${trackId}...`);
@@ -69,61 +69,55 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
     return () => stopCamera();
   }, []);
 
-  return (
-    <>
-      {/* Backdrop */}
-      <div
-        onClick={onClose}
-        style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.8)', zIndex: 99998 }}
-      />
-
-      {/* Modal — centered using transform trick, guaranteed to work */}
+  // ✅ Render via Portal directly on document.body
+  // This escapes ALL parent transforms, overflow:hidden, z-index stacking contexts
+  return ReactDOM.createPortal(
+    <div style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      zIndex: 2147483647, // Maximum possible z-index
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      backgroundColor: 'rgba(0,0,0,0.82)',
+      padding: '20px',
+    }}>
       <div style={{
-        position: 'fixed',
-        top: '50%',
-        left: '50%',
-        transform: 'translate(-50%, -50%)',
-        zIndex: 99999,
-        width: '90vw',
-        maxWidth: '360px',
+        width: '100%', maxWidth: '360px',
         backgroundColor: '#fff',
         borderRadius: '24px',
         overflow: 'hidden',
-        boxShadow: '0 30px 80px rgba(0,0,0,0.5)',
+        boxShadow: '0 32px 80px rgba(0,0,0,0.5)',
       }}>
         {/* Header */}
         <div style={{ backgroundColor: '#0f172a', color: '#fff', padding: '14px 18px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 800, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' as const }}>
             <Camera size={15} style={{ color: '#22d3ee' }} />
             Scan Inward Sticker QR
           </div>
-          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
+          <button onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#94a3b8', display: 'flex' }}>
             <X size={18} />
           </button>
         </div>
 
-        {/* Body */}
-        <div style={{ padding: '18px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+        {/* Camera / Error */}
+        <div style={{ padding: '18px', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', gap: 12 }}>
           {errorMsg ? (
-            <div style={{ padding: 16, backgroundColor: '#fff1f2', borderRadius: 14, textAlign: 'center', color: '#be123c', fontSize: 12, fontWeight: 600 }}>
+            <div style={{ padding: 16, backgroundColor: '#fff1f2', borderRadius: 14, textAlign: 'center' as const, color: '#be123c', fontSize: 12, fontWeight: 600 }}>
               <AlertTriangle size={28} style={{ margin: '0 auto 8px' }} />
               <p>{errorMsg}</p>
             </div>
           ) : (
             <>
-              <div style={{ width: '100%', height: 260, backgroundColor: '#000', borderRadius: 14, overflow: 'hidden', position: 'relative' }}>
+              <div style={{ width: '100%', height: 260, backgroundColor: '#000', borderRadius: 14, overflow: 'hidden', position: 'relative' as const }}>
                 <video
                   ref={videoRef}
                   playsInline
                   muted
                   style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
                 />
-                {/* Scan frame */}
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                   <div style={{ width: 170, height: 170, border: '2.5px solid #22d3ee', borderRadius: 12, boxShadow: '0 0 0 9999px rgba(0,0,0,0.35)' }} />
                 </div>
               </div>
-              <p style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', margin: 0 }}>
+              <p style={{ fontSize: 10, color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase' as const, letterSpacing: '0.1em', margin: 0 }}>
                 Align QR Code within the frame
               </p>
             </>
@@ -132,14 +126,12 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
 
         {/* Footer */}
         <div style={{ padding: '4px 18px 18px', display: 'flex', justifyContent: 'flex-end' }}>
-          <button
-            onClick={onClose}
-            style={{ padding: '8px 20px', backgroundColor: '#0f172a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}
-          >
+          <button onClick={onClose} style={{ padding: '8px 20px', backgroundColor: '#0f172a', color: '#fff', border: 'none', borderRadius: 10, fontWeight: 700, fontSize: 12, cursor: 'pointer' }}>
             Cancel
           </button>
         </div>
       </div>
-    </>
+    </div>,
+    document.body  // ← Renders outside all parent containers
   );
 };
