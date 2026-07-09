@@ -525,7 +525,15 @@ export class ApiController {
           customer: true,
           inspections: true,
           quotations: true,
-          repairs: true,
+          repairs: {
+            include: {
+              partsUsed: {
+                include: {
+                  sparePart: true
+                }
+              }
+            }
+          },
           testResults: true,
           serviceReports: true,
           payments: true,

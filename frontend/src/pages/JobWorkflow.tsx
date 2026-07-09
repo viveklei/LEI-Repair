@@ -1360,13 +1360,31 @@ const JobWorkflow: React.FC = () => {
                     <span className="font-bold text-slate-700">Total Repair Visits:</span>
                     <span className="px-2 py-0.5 bg-blue-100 text-blue-800 rounded-full font-bold">{serialHistory.repairCount}</span>
                   </div>
-                  {serialHistory.history && serialHistory.history.length > 1 && (
+                  {serialHistory.history && serialHistory.history.some((h: any) => h.id !== job.id) && (
                     <div className="space-y-2 pt-2 border-t border-slate-50">
                       <p className="text-[10px] text-slate-400 font-semibold">Previous Failures & Reports:</p>
                       {serialHistory.history.filter((h: any) => h.id !== job.id).map((prevJob: any, i: number) => (
-                        <div key={prevJob.id} className="p-2 bg-slate-50 rounded border border-slate-100">
-                          <p className="font-bold text-slate-700">{prevJob.trackId} ({new Date(prevJob.createdAt).getFullYear()})</p>
-                          <p className="text-[10px] text-slate-500 italic mt-0.5">&quot;{prevJob.complaintDescription}&quot;</p>
+                        <div key={prevJob.id} className="p-2 bg-slate-50 rounded-xl border border-slate-100 flex flex-col gap-1">
+                          <div className="flex justify-between items-center">
+                            <span className="font-extrabold text-[10px] text-slate-800">{prevJob.trackId}</span>
+                            <span className="text-[9px] text-slate-400 font-semibold">
+                              {new Date(prevJob.createdAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-slate-600 font-medium italic">&quot;{prevJob.complaintDescription || 'No description'}&quot;</p>
+                          {/* Display spare parts used in previous jobs if available */}
+                          {prevJob.repairs && prevJob.repairs.some((r: any) => r.partsUsed && r.partsUsed.length > 0) && (
+                            <div className="mt-1.5 pt-1.5 border-t border-dashed border-slate-200">
+                              <span className="text-[8px] font-black uppercase text-slate-400 tracking-wider">Spares Replaced:</span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {prevJob.repairs.flatMap((r: any) => r.partsUsed).map((pu: any, idx: number) => (
+                                  <span key={idx} className="bg-slate-100 text-slate-700 px-1.5 py-0.5 rounded text-[8px] font-bold">
+                                    {pu.sparePart?.partName || 'Spare Part'} (x{pu.quantity})
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
