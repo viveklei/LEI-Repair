@@ -705,6 +705,22 @@ export class ApiController {
         });
         if (existingCust) {
           finalCustomerId = existingCust.id;
+          // Update customer details (like email, name) if they were entered differently or added
+          await prisma.customer.update({
+            where: { id: existingCust.id },
+            data: {
+              email: email || existingCust.email,
+              customerName: customerName || existingCust.customerName,
+              companyName: companyName || existingCust.companyName,
+              address: address || billingAddress || existingCust.address || '',
+              billingAddress: billingAddress || existingCust.billingAddress || '',
+              shippingAddress: shippingAddress || existingCust.shippingAddress || '',
+              billingState: billingState || existingCust.billingState || '',
+              shippingState: shippingState || existingCust.shippingState || '',
+              gstNumber: gstNumber || existingCust.gstNumber,
+              contactPerson: contactPerson || existingCust.contactPerson
+            }
+          });
         } else {
           const newCust = await prisma.customer.create({
             data: { 
@@ -723,6 +739,16 @@ export class ApiController {
           });
           finalCustomerId = newCust.id;
         }
+      } else {
+        // If a customerId was explicitly passed, verify and update email/details if provided
+        await prisma.customer.update({
+          where: { id: finalCustomerId },
+          data: {
+            email: email ? email : undefined,
+            customerName: customerName ? customerName : undefined,
+            companyName: companyName ? companyName : undefined
+          }
+        });
       }
 
       // Step 2: Manage/Create Laser Source
