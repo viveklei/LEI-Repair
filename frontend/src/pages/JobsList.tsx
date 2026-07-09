@@ -20,6 +20,8 @@ import {
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { QRScannerModal } from '../components/QRScannerModal';
+import { createPortal } from 'react-dom';
 
 const JobsList: React.FC = () => {
   const { user } = useAuth();
@@ -41,6 +43,7 @@ const JobsList: React.FC = () => {
   const [ocrPreviewImg, setOcrPreviewImg] = useState<string | null>(null);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [showQrScanner, setShowQrScanner] = useState(false);
   
   // Registration Form
   const [formData, setFormData] = useState({
@@ -206,6 +209,90 @@ const JobsList: React.FC = () => {
     const previewUrl = URL.createObjectURL(file);
     await runOcrScan(file, previewUrl);
     e.target.value = '';
+  };
+
+  /** Handles successful QR code scan to populate machine details */
+  const handleInwardQrSuccess = (decodedText: string) => {
+    try {
+      // Decode if it is JSON or query string format
+      // Standard format fallback parse:
+      let parsedData: any = {};
+      if (decodedText.startsWith('{')) {
+        parsedData = JSON.parse(decodedText);
+      } else {
+        // Parse key-value strings or URL search parameters
+        const urlParams = new URLSearchParams(decodedText.includes('?') ? decodedText.split('?')[1] : decodedText);
+        parsedData = {
+          brand: urlParams.get('brand') || urlParams.get('Brand'),
+          modelNumber: urlParams.get('modelNumber') || urlParams.get('Model No') || urlParams.get('model'),
+          serialNumber: urlParams.get('serialNumber') || urlParams.get('Serial No') || urlParams.get('serial') || urlParams.get('sn'),
+          powerRating: urlParams.get('powerRating') || urlParams.get('Brand/Power') || urlParams.get('power'),
+          mfgYear: urlParams.get('mfgYear') || urlParams.get('Mfg Year') || urlParams.get('year')
+        };
+      }
+
+      // Check if we parsed anything valid, otherwise fall back to scanning line by line
+      if (!parsedData.brand && !parsedData.modelNumber && !parsedData.serialNumber) {
+        const lines = decodedText.split('\n');
+        lines.forEach(line => {
+          const upperLine = line.toUpperCase();
+          if (upperLine.includes('BRAND:') || upperLine.includes('BRAND/POWER:')) {
+            const val = line.split(':')[1]?.trim();
+            if (val) {
+              if (val.includes('|')) {
+                parsedData.brand = val.split('|')[0].trim();
+                parsedData.powerRating = val.split('|')[1].trim();
+              } else {
+                parsedData.brand = val;
+              }
+            }
+          } else if (upperLine.includes('MODEL NO:') || upperLine.includes('MODEL:')) {
+            parsedData.modelNumber = line.split(':')[1]?.trim();
+          } else if (upperLine.includes('SERIAL NO:') || upperLine.includes('SERIAL:')) {
+            parsedData.serialNumber = line.split(':')[1]?.trim();
+          } else if (upperLine.includes('MFG YEAR:') || upperLine.includes('YEAR:')) {
+            parsedData.mfgYear = line.split(':')[1]?.trim();
+          }
+        });
+      }
+
+      setFormData(prev => ({
+        ...prev,
+        brand: parsedData.brand || prev.brand,
+        modelNumber: parsedData.modelNumber || prev.modelNumber,
+        serialNumber: parsedData.serialNumber || prev.serialNumber,
+        powerRating: parsedData.powerRating || prev.powerRating,
+        mfgYear: parsedData.mfgYear ? String(parsedData.mfgYear) : prev.mfgYear,
+      }));
+      toast.success('QR Code Parsed', 'Machine specs auto-filled successfully!');
+    } catch (err) {
+      console.error('Failed to parse inward QR data:', err);
+      // Fallback: search if it is a simple tracking URL/ID and fetch machine details
+      const match = decodedText.match(/([A-Z]+-\d{4}-\d+)/i);
+      if (match) {
+        const trackId = match[0].toUpperCase();
+        api.get(`/jobs/track/${trackId}`).then(res => {
+          if (res.data.jobId) {
+            api.get(`/jobs/${res.data.jobId}`).then(jobRes => {
+              const j = jobRes.data;
+              if (j && j.laserSource) {
+                setFormData(prev => ({
+                  ...prev,
+                  brand: j.laserSource.brand || prev.brand,
+                  modelNumber: j.laserSource.modelNumber || prev.modelNumber,
+                  serialNumber: j.laserSource.serialNumber || prev.serialNumber,
+                  powerRating: j.laserSource.powerRating || prev.powerRating,
+                  mfgYear: j.laserSource.mfgYear ? String(j.laserSource.mfgYear) : prev.mfgYear,
+                }));
+                toast.success('Ticket Specs Loaded', `Loaded specs from existing job ${trackId}`);
+              }
+            });
+          }
+        }).catch(() => {
+          // Silent fallback
+        });
+      }
+    }
   };
 
   /** Open camera stream */
@@ -683,7 +770,17 @@ const JobsList: React.FC = () => {
                       className="bg-cyan-500 hover:bg-cyan-400 text-slate-900 font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-lg shadow-cyan-500/30 disabled:opacity-50"
                     >
                       <Camera className="h-4 w-4" />
-                      Use Camera
+                      OCR Camera
+                    </button>
+                    {/* Scan specs QR */}
+                    <button
+                      type="button"
+                      onClick={() => setShowQrScanner(true)}
+                      disabled={ocrLoading}
+                      className="bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs py-2 px-4 rounded-xl flex items-center gap-2 transition-colors cursor-pointer shadow-lg shadow-purple-600/30 disabled:opacity-50"
+                    >
+                      <ScanLine className="h-4 w-4" />
+                      Scan Specs QR
                     </button>
                   </div>
                 </div>
@@ -1134,6 +1231,15 @@ const JobsList: React.FC = () => {
 
       {/* Scan line keyframe style */}
       <style>{`@keyframes scanLine { 0%,100%{top:20%} 50%{top:80%} }`}</style>
+
+      {/* QR Code Scanner Portal */}
+      {showQrScanner && createPortal(
+        <QRScannerModal 
+          onClose={() => setShowQrScanner(false)} 
+          onScanSuccess={handleInwardQrSuccess} 
+        />, 
+        document.body
+      )}
     </div>
   );
 };
