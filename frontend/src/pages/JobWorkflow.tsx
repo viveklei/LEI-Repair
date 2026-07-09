@@ -2519,10 +2519,24 @@ const JobWorkflow: React.FC = () => {
                           onChange={e => setDispatchForm({...dispatchForm, courierName: e.target.value})}
                           className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white"
                         >
-                          <option value="DHL Express">DHL Express</option>
-                          <option value="FedEx">FedEx</option>
-                          <option value="Blue Dart">Blue Dart</option>
-                          <option value="DTDC">DTDC</option>
+                          <option value="Blue Dart">Blue Dart (Live Tracking)</option>
+                          <option value="ST Couriers">ST Couriers (Live Tracking)</option>
+                          <option value="DHL Express">DHL Express (Live Tracking)</option>
+                          <option value="FedEx">FedEx (Live Tracking)</option>
+                          <option value="DTDC">DTDC (Live Tracking)</option>
+                          <option value="THIRUPATHI COURIERS">THIRUPATHI COURIERS</option>
+                          <option value="METTUR PARCEL SERVICE">METTUR PARCEL SERVICE</option>
+                          <option value="AVINASH CARGO PRIVATE LTD (ACPL)">AVINASH CARGO PRIVATE LTD (ACPL)</option>
+                          <option value="VRL LOGISTICS">VRL LOGISTICS</option>
+                          <option value="SEENSU TRANSPORT">SEENSU TRANSPORT</option>
+                          <option value="PNS COURIERS">PNS COURIERS</option>
+                          <option value="A1 TRAVELS">A1 TRAVELS</option>
+                          <option value="BALAJI TRAVELS">BALAJI TRAVELS</option>
+                          <option value="ROYAL TRAVELS">ROYAL TRAVELS</option>
+                          <option value="DREAMLINE TRAVELS">DREAMLINE TRAVELS</option>
+                          <option value="ARK TRAVELS">ARK TRAVELS</option>
+                          <option value="PADMESH TRAVELS">PADMESH TRAVELS</option>
+                          <option value="AK TRAVELS">AK TRAVELS</option>
                           <option value="Self Pickup">Self Pickup</option>
                         </select>
                       </div>
