@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import api, { API_URL } from '../services/api';
 import { socket } from '../services/socket';
+import { fileUrl, portalTrackUrl } from '../utils/urls';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { 
@@ -795,7 +796,7 @@ const JobWorkflow: React.FC = () => {
       }
 
       // Build text message body
-      const portalUrl = `http://localhost:5173/portal?trackId=${job.trackId}`;
+      const portalUrl = portalTrackUrl(job.trackId);
       let message = `Hello ${job.customer.customerName}, your fiber laser source repair job (${job.trackId}) status is now: ${whatsappStatus.replace(/_/g, ' ')}. `;
       
       if (whatsappStatus === 'RECEIVED') {
@@ -841,7 +842,7 @@ const JobWorkflow: React.FC = () => {
       if (cleanPhone.length === 10) {
         cleanPhone = '91' + cleanPhone;
       }
-      const portalUrl = `http://localhost:5173/portal?trackId=${job.trackId}`;
+      const portalUrl = portalTrackUrl(job.trackId);
       const message = `Hello ${job.customer.customerName}, your fiber laser source repair job (${job.trackId}) status is now: QUOTATION GENERATED. A quotation has been generated. Please review and approve it on the customer portal: ${portalUrl}`;
       const waUrl = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`;
       window.open(waUrl, '_blank');
@@ -1131,7 +1132,7 @@ const JobWorkflow: React.FC = () => {
             <button
               onClick={async () => {
                 try {
-                  const response = await fetch(`http://localhost:5000${qcAssessment.pdfUrl}`);
+                  const response = await fetch(fileUrl(qcAssessment.pdfUrl));
                   if (!response.ok) throw new Error('Download failed');
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);
@@ -1315,7 +1316,7 @@ const JobWorkflow: React.FC = () => {
                         <div key={file.id} className="flex items-center justify-between p-2.5 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 transition-colors">
                           <div className="flex items-center gap-2 overflow-hidden mr-2">
                             {isImg ? (
-                              <img src={`http://localhost:5000${file.fileUrl}`} className="h-8 w-8 object-cover rounded-lg border border-slate-200 shrink-0" />
+                              <img src={fileUrl(file.fileUrl)} className="h-8 w-8 object-cover rounded-lg border border-slate-200 shrink-0" />
                             ) : (
                               <div className="h-8 w-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold text-[10px] shrink-0 border border-blue-100">PDF</div>
                             )}
@@ -1324,7 +1325,7 @@ const JobWorkflow: React.FC = () => {
                             </span>
                           </div>
                           <a
-                            href={`http://localhost:5000${file.fileUrl}`}
+                            href={fileUrl(file.fileUrl)}
                             target="_blank"
                             rel="noreferrer"
                             className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-lg transition-colors shrink-0"
@@ -1443,16 +1444,18 @@ const JobWorkflow: React.FC = () => {
 
                   <form onSubmit={async (e) => {
                     e.preventDefault();
-                    const text = (e.currentTarget.elements.namedItem('staffMsg') as HTMLInputElement).value;
+                    const input = e.currentTarget.elements.namedItem('staffMsg') as HTMLInputElement;
+                    const text = input.value;
                     if (!text.trim()) return;
+                    input.value = ''; // Clear immediately before async call
                     try {
                       const res = await api.post(`/jobs/${job.id}/comments`, { message: text });
                       setJob((prev: any) => ({
                         ...prev,
                         comments: [...(prev.comments || []), res.data]
                       }));
-                      (e.currentTarget.elements.namedItem('staffMsg') as HTMLInputElement).value = '';
                     } catch (err) {
+                      input.value = text; // Restore on failure
                       console.error(err);
                     }
                   }} className="flex-1 flex gap-2">
@@ -1861,7 +1864,7 @@ const JobWorkflow: React.FC = () => {
                               const q = job.quotations[0];
                               try {
                                 const res = await api.get(`/quotation/${q.id}/pdf`);
-                                const pdfResponse = await fetch(`http://localhost:5000${res.data.pdfUrl}`);
+                                const pdfResponse = await fetch(fileUrl(res.data.pdfUrl));
                                 if (!pdfResponse.ok) throw new Error('Download failed');
                                 const blob = await pdfResponse.blob();
                                 const url = window.URL.createObjectURL(blob);
@@ -2425,7 +2428,7 @@ const JobWorkflow: React.FC = () => {
                           <CheckCircle className="h-3 w-3" /> Service Report Compiled
                         </span>
                         <a
-                          href={`http://localhost:5000${job.serviceReports[0].pdfUrl}`}
+                          href={fileUrl(job.serviceReports[0].pdfUrl)}
                           target="_blank" rel="noreferrer"
                           className="text-xs text-blue-600 font-bold hover:underline"
                         >
@@ -2568,7 +2571,7 @@ const JobWorkflow: React.FC = () => {
                   {job.serviceReports && job.serviceReports.length > 0 && (
                     <div className="inline-block pt-2">
                       <a
-                        href={`http://localhost:5000${job.serviceReports[0].pdfUrl}`}
+                        href={fileUrl(job.serviceReports[0].pdfUrl)}
                         target="_blank" rel="noreferrer"
                         className="text-xs text-blue-600 font-bold hover:underline"
                       >
@@ -2748,16 +2751,16 @@ const JobWorkflow: React.FC = () => {
                 <label className="block text-[9px] font-black text-emerald-800 uppercase tracking-wider mb-1.5">WhatsApp Message Preview</label>
                 <p className="text-[11px] text-emerald-950 font-medium leading-relaxed">
                   Hello {job.customer.customerName}, your fiber laser source repair job ({job.trackId}) status is now: <strong className="text-emerald-800 uppercase">{whatsappStatus.replace('_', ' ')}</strong>.
-                  {whatsappStatus === 'RECEIVED' ? ' We have successfully received your laser source. You can track progress here: http://localhost:5173/portal?trackId=' + job.trackId :
-                   whatsappStatus === 'INITIAL_DIAGNOSIS' ? ' Our service engineers are currently inspecting the laser source. Check real-time timeline: http://localhost:5173/portal?trackId=' + job.trackId :
-                   whatsappStatus === 'QUOTATION_GENERATED' ? ' A quotation has been generated. Please review and approve it on the customer portal: http://localhost:5173/portal?trackId=' + job.trackId :
-                   whatsappStatus === 'CUSTOMER_APPROVAL' ? ' Your job is awaiting approval. Review quote here: http://localhost:5173/portal?trackId=' + job.trackId :
-                   whatsappStatus === 'UNDER_REPAIR' ? ' Repair work has started. Our engineer is working on the optical/diodes alignment. Status link: http://localhost:5173/portal?trackId=' + job.trackId :
-                   whatsappStatus === 'WAITING_SPARE_PARTS' ? ' ⚠️ Repair is on hold waiting for spare parts to arrive. We will notify you once parts are received. Status link: http://localhost:5173/portal?trackId=' + job.trackId :
-                   whatsappStatus === 'TESTING_BURN_IN' ? ' Repair completed! The source is now undergoing our mandatory 6-step testing & burn-in phase. Progress: http://localhost:5173/portal?trackId=' + job.trackId :
-                   whatsappStatus === 'READY_FOR_DISPATCH' ? ' Your laser source has successfully passed all burn-in tests! It is ready for dispatch pending payment clearance. portal: http://localhost:5173/portal?trackId=' + job.trackId :
-                   whatsappStatus === 'DISPATCHED' ? ' 🚀 Your repaired laser source has been dispatched! Track courier shipment details here: http://localhost:5173/portal?trackId=' + job.trackId :
-                   ' Job is updated. Track live status: http://localhost:5173/portal?trackId=' + job.trackId
+                  {whatsappStatus === 'RECEIVED' ? ' We have successfully received your laser source. You can track progress here: ' + portalTrackUrl(job.trackId) :
+                   whatsappStatus === 'INITIAL_DIAGNOSIS' ? ' Our service engineers are currently inspecting the laser source. Check real-time timeline: ' + portalTrackUrl(job.trackId) :
+                   whatsappStatus === 'QUOTATION_GENERATED' ? ' A quotation has been generated. Please review and approve it on the customer portal: ' + portalTrackUrl(job.trackId) :
+                   whatsappStatus === 'CUSTOMER_APPROVAL' ? ' Your job is awaiting approval. Review quote here: ' + portalTrackUrl(job.trackId) :
+                   whatsappStatus === 'UNDER_REPAIR' ? ' Repair work has started. Our engineer is working on the optical/diodes alignment. Status link: ' + portalTrackUrl(job.trackId) :
+                   whatsappStatus === 'WAITING_SPARE_PARTS' ? ' ⚠️ Repair is on hold waiting for spare parts to arrive. We will notify you once parts are received. Status link: ' + portalTrackUrl(job.trackId) :
+                   whatsappStatus === 'TESTING_BURN_IN' ? ' Repair completed! The source is now undergoing our mandatory 6-step testing & burn-in phase. Progress: ' + portalTrackUrl(job.trackId) :
+                   whatsappStatus === 'READY_FOR_DISPATCH' ? ' Your laser source has successfully passed all burn-in tests! It is ready for dispatch pending payment clearance. portal: ' + portalTrackUrl(job.trackId) :
+                   whatsappStatus === 'DISPATCHED' ? ' 🚀 Your repaired laser source has been dispatched! Track courier shipment details here: ' + portalTrackUrl(job.trackId) :
+                   ' Job is updated. Track live status: ' + portalTrackUrl(job.trackId)
                   }
                 </p>
               </div>
