@@ -44,6 +44,9 @@ jobs:
             echo "[6/6] Building frontend..."
             cd ../frontend
             npm install --legacy-peer-deps
+            
+            # Configure Node memory options for builder to prevent OOM / Killed process error (exit code 137)
+            export NODE_OPTIONS="--max-old-space-size=1024"
             VITE_API_URL=https://frnd.leip.co.in/api npm run build
 
             echo "Reloading Nginx to serve latest frontend..."
