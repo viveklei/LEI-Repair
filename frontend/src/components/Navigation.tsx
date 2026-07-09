@@ -453,9 +453,9 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                       {/* Invisible click-away overlay */}
                       <div className="fixed inset-0 z-40 bg-transparent" onClick={() => setShowNotifications(false)} />
                       
-                      <div className="absolute right-0 mt-2 w-80 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl z-50 py-3 animate-fade-in text-left">
+                      <div className="absolute right-0 mt-2 w-96 bg-white/95 backdrop-blur-xl border border-slate-200 rounded-2xl shadow-2xl z-50 py-3 animate-fade-in text-left">
                         <div className="px-4 pb-2 border-b border-slate-100 flex items-center justify-between">
-                          <span className="font-extrabold text-[10px] text-slate-400 uppercase tracking-wider">System WhatsApp/Email Alerts</span>
+                          <span className="font-extrabold text-[10px] text-slate-500 uppercase tracking-widest">Alerts & System Activity logs</span>
                           <button
                             onClick={() => {
                               setNotifications([]);
@@ -466,34 +466,53 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                             Clear
                           </button>
                         </div>
-                        <div className="max-h-72 overflow-y-auto divide-y divide-slate-100/75 mt-1">
+                        <div className="max-h-[420px] overflow-y-auto divide-y divide-slate-100/75 mt-1">
                           {notifications.length === 0 ? (
                             <div className="py-8 text-center text-slate-400 text-xs font-semibold">
                               No recent system alerts.
                             </div>
                           ) : (
-                            notifications.map(n => (
-                              <div key={n.id} className="px-4 py-2.5 hover:bg-slate-50/50 transition-colors">
-                                <div className="flex justify-between items-start gap-1">
-                                  <span className={`text-[8px] font-black uppercase px-1.5 py-0.5 rounded-md ${
-                                    n.type === 'WHATSAPP' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-blue-50 text-blue-700 border border-blue-100'
-                                  }`}>
-                                    {n.type}
-                                  </span>
-                                  <span className="text-[9px] text-slate-400">
-                                    {new Date(n.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                  </span>
-                                </div>
-                                <p className="text-xs text-slate-700 mt-1 line-clamp-2 leading-relaxed">{n.message}</p>
-                                {n.job && (
-                                  <div className="flex items-center gap-1.5 mt-1 font-bold text-[9px] text-slate-400 uppercase tracking-wide">
-                                    <span>{n.job.trackId}</span>
-                                    <span>·</span>
-                                    <span className="truncate max-w-[120px]">{n.job.customer?.companyName}</span>
+                            notifications.map(n => {
+                              const isPortalActivity = n.message.includes('logged into') || n.message.includes('viewed tracking');
+                              const isMailLog = n.type === 'EMAIL' && !isPortalActivity;
+                              return (
+                                <div 
+                                  key={n.id} 
+                                  onClick={() => {
+                                    if (n.jobId && n.jobId !== 'SYSTEM') {
+                                      navigate(`/jobs/${n.jobId}`);
+                                      setShowNotifications(false);
+                                    }
+                                  }}
+                                  className="px-4 py-3 hover:bg-slate-50/80 transition-colors cursor-pointer flex flex-col gap-1"
+                                >
+                                  <div className="flex justify-between items-center">
+                                    <span className={`text-[8px] font-black uppercase px-2 py-0.5 rounded ${
+                                      isPortalActivity ? 'bg-indigo-50 text-indigo-700 border border-indigo-100' :
+                                      isMailLog ? 'bg-purple-50 text-purple-700 border border-purple-100' :
+                                      n.type === 'WHATSAPP' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 
+                                      'bg-slate-50 text-slate-700 border border-slate-100'
+                                    }`}>
+                                      {isPortalActivity ? 'Portal Activity' : isMailLog ? 'SMTP E-mail' : n.type}
+                                    </span>
+                                    <span className="text-[9px] text-slate-400 font-medium">
+                                      {new Date(n.sentAt).toLocaleDateString([], { month: 'short', day: 'numeric' })} · {new Date(n.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </span>
                                   </div>
-                                )}
-                              </div>
-                            ))
+                                  
+                                  {/* Full message display */}
+                                  <p className="text-xs text-slate-700 font-medium leading-relaxed mt-0.5">{n.message}</p>
+                                  
+                                  {n.job && (
+                                    <div className="flex items-center gap-1.5 font-bold text-[8.5px] text-blue-600 uppercase tracking-wide">
+                                      <span>{n.job.trackId}</span>
+                                      <span className="text-slate-300">·</span>
+                                      <span className="truncate max-w-[150px] text-slate-500">{n.job.customer?.companyName}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
                           )}
                         </div>
                       </div>

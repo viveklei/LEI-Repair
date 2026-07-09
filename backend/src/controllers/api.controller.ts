@@ -266,6 +266,18 @@ export class ApiController {
           { expiresIn: '2h' }
         );
 
+        // Log portal tracking scan event
+        await prisma.notification.create({
+          data: {
+            jobId: job.id,
+            type: 'EMAIL', // Using email table hook
+            recipient: job.customer.customerName,
+            message: `🔍 Customer viewed tracking page for ticket ${job.trackId}`,
+            sentStatus: 'SENT'
+          }
+        });
+        sendRealtimeNotification('PORTAL_TRACK', 'Customer Tracking View', `Customer viewed timeline for ticket ${job.trackId}`, job.id);
+
         return res.json({ token, jobId: job.id });
       }
 
@@ -326,6 +338,18 @@ export class ApiController {
           JWT_SECRET,
           { expiresIn: '2h' }
         );
+
+        // Log customer email login event
+        await prisma.notification.create({
+          data: {
+            jobId: mostRecentJob?.id || 'SYSTEM',
+            type: 'EMAIL',
+            recipient: customer.customerName,
+            message: `🔑 Customer logged into service portal (${customer.companyName})`,
+            sentStatus: 'SENT'
+          }
+        });
+        sendRealtimeNotification('PORTAL_LOGIN', 'Customer Login', `Customer logged into portal (${customer.companyName})`, mostRecentJob?.id);
 
         return res.json({ token, customerId: customer.id, jobId: mostRecentJob?.id });
       }
@@ -1067,6 +1091,18 @@ export class ApiController {
       if (!job) {
         return res.status(404).json({ message: 'Tracking record not found' });
       }
+
+      // Log public tracking search lookup
+      await prisma.notification.create({
+        data: {
+          jobId: job.id,
+          type: 'EMAIL',
+          recipient: job.customer.companyName,
+          message: `🔍 Public search: ${job.trackId} status tracked.`,
+          sentStatus: 'SENT'
+        }
+      });
+      sendRealtimeNotification('PUBLIC_SEARCH', 'Ticket Tracked', `Public status check on ${job.trackId}`, job.id);
 
       res.json(job);
     } catch (e: any) {
@@ -2688,7 +2724,7 @@ export class ApiController {
     try {
       if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
       const notifications = await prisma.notification.findMany({
-        take: 15,
+        take: 30, // Show more logs
         orderBy: { sentAt: 'desc' },
         include: { job: { include: { customer: true } } }
       });
