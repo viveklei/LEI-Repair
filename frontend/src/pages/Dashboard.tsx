@@ -102,6 +102,7 @@ const Dashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [queueStatusFilter, setQueueStatusFilter] = useState<'ALL' | 'INSPECTION' | 'REPAIR' | 'TESTING' | 'DISPATCH'>('ALL');
   const [queuePriorityFilter, setQueuePriorityFilter] = useState<'ALL' | 'URGENT' | 'HIGH' | 'NORMAL'>('ALL');
+  const [showOnlyAssigned, setShowOnlyAssigned] = useState(true);
 
   // Diagnostics & Calibration Settings
   const [diodeLimit, setDiodeLimit] = useState(80); // Target Current max (0A - 100A)
@@ -379,9 +380,14 @@ const Dashboard: React.FC = () => {
       const jobPriority = getJobPriority(job);
       if (queuePriorityFilter !== 'ALL' && jobPriority !== queuePriorityFilter) return false;
 
-      // 4. Engineer Filter (if role is ENGINEER, only show jobs assigned to them OR unassigned jobs)
-      if (user?.role === 'ENGINEER' && job.currentEngineerId && job.currentEngineerId !== user.id) {
-        return false;
+      // 4. Engineer Filter (if role is ENGINEER, check if showOnlyAssigned is checked)
+      if (user?.role === 'ENGINEER') {
+        if (showOnlyAssigned) {
+          if (job.currentEngineerId !== user.id) return false;
+        } else {
+          // If viewing all, exclude jobs assigned to other engineers (keep unassigned jobs)
+          if (job.currentEngineerId && job.currentEngineerId !== user.id) return false;
+        }
       }
 
       return true;
@@ -1123,7 +1129,31 @@ const Dashboard: React.FC = () => {
               <h3 className="font-extrabold text-slate-900 text-sm">Active Inward Operations Feed</h3>
               <p className="text-xs text-slate-400 font-semibold mt-0.5">Filter and search diagnostic tracks across queues.</p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex items-center gap-3">
+              {user?.role === 'ENGINEER' && (
+                <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs">
+                  <button
+                    onClick={() => setShowOnlyAssigned(true)}
+                    className={`px-3 py-1.5 rounded-lg font-black uppercase text-[10px] tracking-wider transition-all cursor-pointer ${
+                      showOnlyAssigned 
+                        ? 'bg-blue-600 text-white shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    My Tasks Only
+                  </button>
+                  <button
+                    onClick={() => setShowOnlyAssigned(false)}
+                    className={`px-3 py-1.5 rounded-lg font-black uppercase text-[10px] tracking-wider transition-all cursor-pointer ${
+                      !showOnlyAssigned 
+                        ? 'bg-blue-600 text-white shadow-sm' 
+                        : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                  >
+                    All Available Work
+                  </button>
+                </div>
+              )}
               <Link to="/jobs" className="text-xs font-black text-cyan-600 hover:text-cyan-700 bg-cyan-50 px-3 py-1.5 rounded-lg border border-cyan-100 transition-colors">Manage All Repair Tickets</Link>
             </div>
           </div>
