@@ -423,7 +423,7 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
           )}
           
-          {showQRScanner && <QRScannerModal onClose={() => setShowQRScanner(false)} />}
+          {showQRScanner && createPortal(<QRScannerModal onClose={() => setShowQRScanner(false)} />, document.body)}
         </div>
 
           {/* Right side */}
