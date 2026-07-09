@@ -36,24 +36,36 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
       return;
     }
 
-    // Default: Check for inward sticker and redirect
-    const match = raw.match(/([A-Z]+-\d{4}-\d+)/i);
-    if (!match) {
-      toast.error('Invalid QR', 'No valid Track ID found.');
+    // Parse out Track ID from QR value
+    // QR can be raw text 'FRND-2026-0009' or full URL like 'https://domain.com/track/FRND-2026-0009'
+    let trackId = '';
+    const match = raw.match(/FRND-\d{4}-\d+/i);
+    if (match) {
+      trackId = match[0].toUpperCase();
+    } else {
+      // Fallback regex to match any PREFIX-YEAR-NUMBER string just in case
+      const genMatch = raw.match(/([A-Z]+-\d{4}-\d+)/i);
+      if (genMatch) {
+        trackId = genMatch[0].toUpperCase();
+      }
+    }
+
+    if (!trackId) {
+      toast.error('Invalid QR Code', 'Could not detect a valid ticket Tracking ID.');
       onClose();
       return;
     }
-    const trackId = match[0].toUpperCase();
-    toast.success('Detected!', `Looking up ${trackId}...`);
+
+    toast.success('Sticker Scanned', `Locating job ${trackId}...`);
     try {
       const res = await api.get(`/jobs/track/${trackId}`);
       if (res.data.jobId) {
         navigate(`/jobs/${res.data.jobId}`);
       } else {
-        toast.error('Not Found', `No ticket for ${trackId}`);
+        toast.error('Not Found', `No active ticket matches ${trackId}`);
       }
     } catch (err: any) {
-      toast.error('Error', err.response?.data?.message || 'Lookup failed');
+      toast.error('Scan Failed', err.response?.data?.message || 'Failed to locate tracking profile.');
     } finally {
       onClose();
     }
