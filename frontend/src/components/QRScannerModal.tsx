@@ -1,6 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { Html5Qrcode } from 'html5-qrcode';
-import { X, Camera, AlertTriangle } from 'lucide-react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
+import { X, Camera, AlertTriangle, RefreshCw } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
@@ -10,124 +9,151 @@ interface QRScannerModalProps {
 }
 
 export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
-  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const intervalRef = useRef<number | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [scanning, setScanning] = useState(true);
   const { toast } = useToast();
   const navigate = useNavigate();
-  const scannerId = 'qr-reader-container';
+
+  const stopCamera = useCallback(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    streamRef.current?.getTracks().forEach(t => t.stop());
+  }, []);
+
+  const handleQRDetected = useCallback(async (trackId: string) => {
+    setScanning(false);
+    stopCamera();
+    toast.success('Sticker Detected', `Scanning details for ${trackId}...`);
+    try {
+      const res = await api.get(`/jobs/track/${trackId}`);
+      if (res.data.jobId) {
+        navigate(`/jobs/${res.data.jobId}`);
+      } else {
+        toast.error('Not Found', `No active ticket matched ${trackId}`);
+      }
+    } catch (err: any) {
+      toast.error('Lookup Failed', err.response?.data?.message || 'Could not fetch job info.');
+    } finally {
+      onClose();
+    }
+  }, [stopCamera, toast, navigate, onClose]);
 
   useEffect(() => {
-    const startScanner = async () => {
+    const startCamera = async () => {
       try {
-        const html5Qrcode = new Html5Qrcode(scannerId);
-        scannerRef.current = html5Qrcode;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+          audio: false,
+        });
+        streamRef.current = stream;
+        if (videoRef.current) {
+          videoRef.current.srcObject = stream;
+          await videoRef.current.play();
+        }
 
-        await html5Qrcode.start(
-          { facingMode: 'environment' },
-          {
-            fps: 10,
-            qrbox: { width: 220, height: 220 }
-          },
-          async (decodedText) => {
-            console.log('QR Code scanned:', decodedText);
-            stopScanner();
-
-            // Match FRND-2026-0006 or any PREFIX-YEAR-NUMBER format
-            let trackId = '';
-            const match = decodedText.match(/([A-Z]+-\d{4}-\d+)/i);
-            if (match) {
-              trackId = match[0].toUpperCase();
-            } else {
-              toast.error('Invalid QR Code', 'This code does not contain a valid Track ID.');
-              onClose();
-              return;
-            }
-
+        // Use BarcodeDetector if available (modern browsers)
+        const BD = (window as any).BarcodeDetector;
+        if (BD) {
+          const detector = new BD({ formats: ['qr_code'] });
+          intervalRef.current = window.setInterval(async () => {
+            if (!videoRef.current || !scanning) return;
             try {
-              toast.success('Sticker Detected', `Scanning details for ${trackId}...`);
-              const res = await api.get(`/jobs/track/${trackId}`);
-              if (res.data.jobId) {
-                navigate(`/jobs/${res.data.jobId}`);
-              } else {
-                toast.error('Ticket Not Found', `No active ticket matched ${trackId}`);
+              const codes = await detector.detect(videoRef.current);
+              if (codes.length > 0) {
+                const raw = codes[0].rawValue as string;
+                const match = raw.match(/([A-Z]+-\d{4}-\d+)/i);
+                if (match) handleQRDetected(match[0].toUpperCase());
               }
-            } catch (err: any) {
-              toast.error('Lookup Failed', err.response?.data?.message || 'Could not fetch job info.');
-            } finally {
-              onClose();
-            }
-          },
-          () => {
-            // Suppress verbose per-frame error logs
-          }
-        );
+            } catch (_) {}
+          }, 300);
+        } else {
+          // Fallback: canvas-based polling
+          const canvas = canvasRef.current;
+          if (!canvas) return;
+          const ctx = canvas.getContext('2d');
+          intervalRef.current = window.setInterval(() => {
+            const video = videoRef.current;
+            if (!video || !ctx || !scanning) return;
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            ctx.drawImage(video, 0, 0);
+          }, 500);
+        }
       } catch (err: any) {
-        console.error('Camera Scanner start failed:', err);
-        setErrorMsg('Unable to access camera. Please check your browser permissions and try again.');
+        setErrorMsg('Camera access denied. Please allow camera permission and try again.');
       }
     };
 
-    startScanner();
-    return () => { stopScanner(); };
+    startCamera();
+    return () => stopCamera();
   }, []);
 
-  const stopScanner = async () => {
-    if (scannerRef.current && scannerRef.current.isScanning) {
-      try { await scannerRef.current.stop(); } catch (e) {}
-    }
-  };
-
   return (
-    <div
-      className="fixed inset-0 z-[99999] flex flex-col items-center justify-center"
-      style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
-    >
-      {/* Modal card — constrained so it never overflows screen */}
-      <div
-        className="bg-white rounded-3xl w-full shadow-2xl border border-slate-100 animate-scale-in text-left flex flex-col"
-        style={{ maxWidth: '360px', maxHeight: '90vh', margin: '0 16px' }}
-      >
+    // Full-screen dark backdrop
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 99999,
+      backgroundColor: 'rgba(0,0,0,0.85)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: '16px',
+    }}>
+      {/* Modal card — fixed size, always centered */}
+      <div style={{
+        backgroundColor: 'white', borderRadius: '24px', width: '100%',
+        maxWidth: '360px', overflow: 'hidden', boxShadow: '0 25px 60px rgba(0,0,0,0.4)',
+        display: 'flex', flexDirection: 'column',
+      }}>
         {/* Header */}
-        <div className="bg-slate-950 text-white px-5 py-4 flex justify-between items-center rounded-t-3xl shrink-0">
-          <h3 className="font-extrabold text-xs tracking-wider uppercase flex items-center gap-2">
-            <Camera className="h-4 w-4 text-cyan-400 animate-pulse" />
+        <div style={{ backgroundColor: '#0f172a', color: 'white', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontWeight: 800, fontSize: '11px', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <Camera size={16} style={{ color: '#22d3ee' }} />
             Scan Inward Sticker QR
-          </h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-white transition-colors cursor-pointer"
-          >
-            <X className="h-5 w-5" />
+          </div>
+          <button onClick={onClose} style={{ color: '#94a3b8', background: 'none', border: 'none', cursor: 'pointer', display: 'flex' }}>
+            <X size={20} />
           </button>
         </div>
 
-        {/* Scanner area */}
-        <div className="p-5 flex flex-col items-center flex-1 overflow-hidden">
+        {/* Camera / Error area */}
+        <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
           {errorMsg ? (
-            <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex flex-col items-center text-center text-xs text-rose-700 font-semibold gap-2">
-              <AlertTriangle className="h-8 w-8 text-rose-600 animate-bounce" />
+            <div style={{ padding: '20px', backgroundColor: '#fff1f2', borderRadius: '16px', textAlign: 'center', color: '#be123c', fontSize: '12px', fontWeight: 600 }}>
+              <AlertTriangle size={32} style={{ margin: '0 auto 8px' }} />
               <p>{errorMsg}</p>
+              <button onClick={onClose} style={{ marginTop: '12px', padding: '8px 16px', backgroundColor: '#0f172a', color: 'white', borderRadius: '10px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}>
+                Close
+              </button>
             </div>
           ) : (
-            <div className="w-full space-y-3">
-              {/* The library injects video here — give it a fixed square size */}
-              <div
-                id={scannerId}
-                className="w-full bg-black rounded-2xl overflow-hidden"
-                style={{ height: '280px' }}
-              />
-              <p className="text-[10px] text-slate-400 text-center font-bold uppercase tracking-wider">
+            <>
+              {/* Video element — we fully control this, no library injections */}
+              <div style={{ width: '100%', borderRadius: '16px', overflow: 'hidden', backgroundColor: '#000', position: 'relative' }}>
+                <video
+                  ref={videoRef}
+                  playsInline
+                  muted
+                  style={{ width: '100%', height: '260px', objectFit: 'cover', display: 'block' }}
+                />
+                {/* Scan frame overlay */}
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div style={{ width: '180px', height: '180px', border: '2px solid #22d3ee', borderRadius: '12px', boxShadow: '0 0 0 9999px rgba(0,0,0,0.4)' }} />
+                </div>
+              </div>
+              <canvas ref={canvasRef} style={{ display: 'none' }} />
+              <p style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.1em', textAlign: 'center' }}>
                 Align QR Code within the scanning frame
               </p>
-            </div>
+            </>
           )}
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 px-6 py-4 flex justify-end rounded-b-3xl shrink-0">
+        <div style={{ padding: '12px 20px 20px', display: 'flex', justifyContent: 'flex-end' }}>
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer"
+            style={{ padding: '8px 20px', backgroundColor: '#0f172a', color: 'white', borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: 700, fontSize: '12px' }}
           >
             Cancel
           </button>
