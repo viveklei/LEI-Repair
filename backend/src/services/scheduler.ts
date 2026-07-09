@@ -1,10 +1,10 @@
-import prisma from '../src/config/db';
-import { NotificationService } from '../src/services/notification.service';
+import prisma from '../config/db';
+import { NotificationService } from './notification.service';
 import nodemailer from 'nodemailer';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 
-dotenv.config({ path: path.join(__dirname, '..', '.env') });
+dotenv.config({ path: path.join(__dirname, '..', '..', '.env') });
 
 export async function runManagerApprovalCheck() {
   console.log('⏰ Running daily pending manager approvals digest check...');
@@ -32,7 +32,7 @@ export async function runManagerApprovalCheck() {
 
     // 2. Format list items for HTML table
     const now = new Date();
-    const digestItems = pendingVerifications.map((v) => {
+    const digestItems = pendingVerifications.map((v: any) => {
       const createdDate = new Date(v.createdAt);
       const diffTime = Math.abs(now.getTime() - createdDate.getTime());
       const daysPending = Math.floor(diffTime / (1000 * 60 * 60 * 24)) || 1; // Fallback to 1 if < 24h
@@ -56,7 +56,7 @@ export async function runManagerApprovalCheck() {
       where: { role: { in: ['ADMIN'] }, isDeleted: false }
     });
 
-    const recipientEmails = adminUsers.map(u => u.email).filter(Boolean);
+    const recipientEmails = adminUsers.map((u: any) => u.email).filter(Boolean);
     
     // Add fallback if no admin emails retrieved
     if (recipientEmails.length === 0 && process.env.SMTP_USER) {
