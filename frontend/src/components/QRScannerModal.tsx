@@ -84,12 +84,12 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
         html5QrCode.start(
           { facingMode: 'environment' },
           {
-            fps: 10,
+            fps: 15, // Higher scanning frequency for snappier response
+            // No strict square restriction on qrbox so it can scan regardless of size/rotation
             qrbox: (width, height) => {
-              const size = Math.min(width, height) * 0.65;
+              const size = Math.min(width, height) * 0.85;
               return { width: size, height: size };
-            },
-            aspectRatio: 1.0
+            }
           },
           (decodedText) => {
             handleQRDetected(decodedText);
