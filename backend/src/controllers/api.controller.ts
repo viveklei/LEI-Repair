@@ -791,6 +791,27 @@ export class ApiController {
         job.customer.mobileNumber
       );
 
+      // Email update (advanced HTML)
+      if (job.customer.email) {
+        const websiteUrl = req.headers.origin || 'https://frnd.leip.co.in';
+        const inwardHtml = NotificationService.getJobInwardHtmlTemplate(
+          job.customer.customerName,
+          job.customer.companyName,
+          job.trackId,
+          job.laserSource.brand,
+          job.laserSource.powerRating,
+          job.complaintCategory,
+          websiteUrl,
+          job.customer.email
+        );
+        await NotificationService.sendEmailUpdate(
+          job.id,
+          job.customer.email,
+          `🛠️ Job Inward Registered - ${job.trackId}`,
+          inwardHtml
+        );
+      }
+
       sendRealtimeNotification('NEW_JOB', 'New Service Job Registered', `Job ticket ${job.trackId} has been successfully inwarded.`, job.id);
       broadcastDashboardUpdate();
       res.json(job);
@@ -2092,6 +2113,27 @@ export class ApiController {
           job.trackId,
           job.customer.mobileNumber
         );
+
+        // Email update (advanced HTML)
+        if (job.customer.email) {
+          const websiteUrl = req.headers.origin || 'https://frnd.leip.co.in';
+          const dispatchHtml = NotificationService.getJobDispatchedHtmlTemplate(
+            job.customer.customerName,
+            job.customer.companyName,
+            job.trackId,
+            job.laserSource.brand,
+            job.laserSource.powerRating,
+            courierName,
+            awbNumber,
+            websiteUrl
+          );
+          await NotificationService.sendEmailUpdate(
+            job.id,
+            job.customer.email,
+            `🚀 Laser Source Dispatched - ${job.trackId}`,
+            dispatchHtml
+          );
+        }
       }
 
       broadcastDashboardUpdate();

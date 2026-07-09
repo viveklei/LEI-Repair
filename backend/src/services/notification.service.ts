@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import prisma from '../config/db';
+import nodemailer from 'nodemailer';
 
 const NOTIFICATIONS_LOG_PATH = path.join(__dirname, '..', '..', 'public', 'notifications.log');
 
@@ -16,6 +17,45 @@ export class NotificationService {
     const logEntry = `[${timestamp}] [${type}] To: ${recipient} | Message: ${message}\n`;
     fs.appendFileSync(NOTIFICATIONS_LOG_PATH, logEntry);
     console.log(`\n📢 [MOCK NOTIFICATION - ${type}] To: ${recipient}\nMessage: ${message}\n`);
+  }
+
+  /** Helper to send a real SMTP email with HTML template styling */
+  private static async sendSMTPHtmlEmail(email: string, subject: string, htmlContent: string) {
+    const useSMTP = process.env.SMTP_USER && process.env.SMTP_PASS;
+    if (!useSMTP) {
+      console.log('⚠️ SMTP credentials not configured. Skipping SMTP transmission.');
+      return;
+    }
+
+    try {
+      const transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: parseInt(process.env.SMTP_PORT || '587'),
+        secure: process.env.SMTP_PORT === '465',
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS
+        }
+      });
+
+      const logoPath = path.join(__dirname, '..', '..', 'public', 'logo.png');
+      const hasLogo = fs.existsSync(logoPath);
+
+      await transporter.sendMail({
+        from: process.env.SMTP_FROM || `"LEI Service Centre" <${process.env.SMTP_USER}>`,
+        to: email,
+        subject: subject,
+        attachments: hasLogo ? [{
+          filename: 'logo.png',
+          path: logoPath,
+          cid: 'logo'
+        }] : [],
+        html: htmlContent
+      });
+      console.log(`✉️ SMTP HTML Email sent successfully to ${email}`);
+    } catch (err: any) {
+      console.error('❌ SMTP Email delivery failed:', err.message);
+    }
   }
 
   static async sendWhatsAppUpdate(jobId: string, status: string, customerName: string, trackId: string, mobileNumber: string) {
@@ -65,11 +105,153 @@ export class NotificationService {
         jobId,
         type: 'EMAIL',
         recipient: email,
-        message: `${subject} - [HTML content simulation]`,
+        message: `${subject} - [HTML Content]`,
         sentStatus: 'SENT',
       },
     });
 
-    this.logNotification('EMAIL', email, `${subject}\nContent: ${htmlContent.substring(0, 150)}...`);
+    this.logNotification('EMAIL', email, `${subject}\nContent Summary: ${htmlContent.substring(0, 150)}...`);
+    await this.sendSMTPHtmlEmail(email, subject, htmlContent);
+  }
+
+  /** Formats an advanced HTML email template for inward job creation notifications */
+  static getJobInwardHtmlTemplate(customerName: string, companyName: string, trackId: string, laserBrand: string, laserPower: string, complaintCategory: string, websiteUrl: string, customerEmail: string): string {
+    const portalUrl = `${websiteUrl}/portal?trackId=${trackId}`;
+    const logoPath = path.join(__dirname, '..', '..', 'public', 'logo.png');
+    const hasLogo = fs.existsSync(logoPath);
+
+    return `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 40px 20px; color: #334155; line-height: 1.6;">
+        <div style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0;">
+          
+          <!-- HEADER -->
+          <div style="background-color: #0f172a; padding: 24px 30px; text-align: center; border-bottom: 3px solid #3b82f6;">
+            ${hasLogo ? '<img src="cid:logo" alt="Laser Experts India Logo" style="height: 48px; width: auto; vertical-align: middle; margin-bottom: 8px;" />' : ''}
+            <h2 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px;">Laser Source Inward Registered</h2>
+          </div>
+
+          <!-- CONTENT BODY -->
+          <div style="padding: 40px 35px;">
+            <p style="margin-top: 0; font-size: 16px; color: #1e293b;">Dear <strong>${customerName}</strong> (<em>${companyName}</em>),</p>
+            <p style="font-size: 15px; color: #475569;">We have successfully logged and inward-registered your fiber laser source at the <strong>Laser Experts India</strong> service hub.</p>
+            
+            <!-- TICKET SPEC DETAILS -->
+            <div style="background-color: #f1f5f9; padding: 20px; border-radius: 12px; margin: 24px 0; border: 1px solid #e2e8f0;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr>
+                  <td style="padding: 4px 0; color: #64748b; font-weight: 600; width: 40%;">Tracking ID:</td>
+                  <td style="padding: 4px 0; color: #0f172a; font-weight: 700;">${trackId}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #64748b; font-weight: 600;">Laser Source:</td>
+                  <td style="padding: 4px 0; color: #0f172a; font-weight: 700;">${laserBrand} | ${laserPower}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #64748b; font-weight: 600;">Reported Issue:</td>
+                  <td style="padding: 4px 0; color: #be123c; font-weight: 700;">${complaintCategory}</td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- PORTAL TRACKING DETAILS -->
+            <div style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 1px dashed #3b82f6; padding: 24px; border-radius: 12px; text-align: center; margin: 30px 0;">
+              <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #2563eb; font-weight: 700; margin-bottom: 12px;">Access Live Tracking Portal</div>
+              <a href="${portalUrl}" target="_blank" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 24px; font-weight: 700; font-size: 13px; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(37, 99, 235, 0.25);">
+                Track Repair Timeline
+              </a>
+              <div style="font-size: 11px; color: #475569; margin-top: 14px;">
+                Alternatively, you can login on our portal using your registered email: <strong>${customerEmail}</strong> & requesting a secure Login OTP code.
+              </div>
+            </div>
+
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">Our service engineers will initiate the physical inspection & diagnostic sweeps. We will keep you updated in real-time as stages progress.</p>
+          </div>
+
+          <!-- FOOTER -->
+          <div style="background-color: #f1f5f9; padding: 30px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569; text-align: center;">
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 8px;">LASER EXPERTS INDIA LLP</div>
+            <div style="margin-bottom: 12px; line-height: 1.4;">
+              <strong>Hosur Service Center:</strong><br/>
+              No. 27/3, Anumepalli, Begapalli Road, Hosur, Tamil Nadu - 635 126
+            </div>
+            <div style="border-top: 1px dashed #cbd5e1; padding-top: 12px; margin-top: 12px;">
+              <strong>Support:</strong> 📞 +91 93810 72240 | ✉️ laserexpertsindiaglobal@gmail.com
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+  }
+
+  /** Formats an advanced HTML email template for dispatched job completion notifications */
+  static getJobDispatchedHtmlTemplate(customerName: string, companyName: string, trackId: string, laserBrand: string, laserPower: string, courierName: string, awbNumber: string, websiteUrl: string): string {
+    const portalUrl = `${websiteUrl}/portal?trackId=${trackId}`;
+    const logoPath = path.join(__dirname, '..', '..', 'public', 'logo.png');
+    const hasLogo = fs.existsSync(logoPath);
+
+    return `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 40px 20px; color: #334155; line-height: 1.6;">
+        <div style="max-width: 580px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0;">
+          
+          <!-- HEADER -->
+          <div style="background-color: #0f172a; padding: 24px 30px; text-align: center; border-bottom: 3px solid #10b981;">
+            ${hasLogo ? '<img src="cid:logo" alt="Laser Experts India Logo" style="height: 48px; width: auto; vertical-align: middle; margin-bottom: 8px;" />' : ''}
+            <h2 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px;">🚀 Your Repaired Laser is Dispatched</h2>
+          </div>
+
+          <!-- CONTENT BODY -->
+          <div style="padding: 40px 35px;">
+            <p style="margin-top: 0; font-size: 16px; color: #1e293b;">Dear <strong>${customerName}</strong> (<em>${companyName}</em>),</p>
+            <p style="font-size: 15px; color: #475569;">Great news! Repair verification is complete, payment clearance has been confirmed, and your fiber laser source has been securely packaged and dispatched back to you.</p>
+            
+            <!-- SHIPMENT SPEC DETAILS -->
+            <div style="background-color: #f0fdf4; padding: 20px; border-radius: 12px; margin: 24px 0; border: 1px solid #bbf7d0;">
+              <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <tr>
+                  <td style="padding: 4px 0; color: #166534; font-weight: 600; width: 40%;">Tracking ID:</td>
+                  <td style="padding: 4px 0; color: #0f172a; font-weight: 700;">${trackId}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #166534; font-weight: 600;">Laser Spec:</td>
+                  <td style="padding: 4px 0; color: #0f172a; font-weight: 700;">${laserBrand} | ${laserPower}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #166534; font-weight: 600;">Courier Service:</td>
+                  <td style="padding: 4px 0; color: #0f172a; font-weight: 700;">${courierName}</td>
+                </tr>
+                <tr>
+                  <td style="padding: 4px 0; color: #166534; font-weight: 600;">AWB tracking No:</td>
+                  <td style="padding: 4px 0; color: #2563eb; font-weight: 700;">${awbNumber}</td>
+                </tr>
+              </table>
+            </div>
+
+            <!-- PORTAL TRACKING DETAILS -->
+            <div style="background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%); border: 1px dashed #10b981; padding: 24px; border-radius: 12px; text-align: center; margin: 30px 0;">
+              <div style="font-size: 12px; text-transform: uppercase; letter-spacing: 1.5px; color: #059669; font-weight: 700; margin-bottom: 12px;">Track Shipment Live</div>
+              <a href="${portalUrl}" target="_blank" style="display: inline-block; background-color: #10b981; color: #ffffff; padding: 12px 24px; font-weight: 700; font-size: 13px; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(16, 185, 129, 0.25);">
+                Open Live Timeline
+              </a>
+            </div>
+
+            <p style="font-size: 13px; color: #64748b; margin-bottom: 0;">Thank you for trusting Laser Experts India LLP with your industrial fiber laser source repairs. Please inspect the package upon arrival and let us know if you require any installation support.</p>
+          </div>
+
+          <!-- FOOTER -->
+          <div style="background-color: #f1f5f9; padding: 30px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569; text-align: center;">
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 8px;">LASER EXPERTS INDIA LLP</div>
+            <div style="margin-bottom: 12px; line-height: 1.4;">
+              <strong>Hosur Service Hub:</strong><br/>
+              No. 27/3, Anumepalli, Begapalli Road, Hosur, Tamil Nadu - 635 126
+            </div>
+            <div style="border-top: 1px dashed #cbd5e1; padding-top: 12px; margin-top: 12px;">
+              <strong>Support Hotline:</strong> 📞 +91 93810 72240 | ✉️ laserexpertsindiaglobal@gmail.com
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
   }
 }
