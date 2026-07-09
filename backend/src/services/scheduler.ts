@@ -53,7 +53,12 @@ export async function runManagerApprovalCheck() {
 
     // 4. Fetch all Admin / Manager email recipients
     const adminUsers = await prisma.user.findMany({
-      where: { role: { in: ['ADMIN'] }, isDeleted: false }
+      where: {
+        role: {
+          name: 'ADMIN'
+        },
+        isDeleted: false
+      }
     });
 
     const recipientEmails = adminUsers.map((u: any) => u.email).filter(Boolean);
