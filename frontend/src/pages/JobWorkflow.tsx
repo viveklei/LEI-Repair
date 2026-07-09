@@ -517,6 +517,29 @@ const JobWorkflow: React.FC = () => {
     }
   };
 
+  // Auto-Save Draft for QC Assessment locally (restores if session closed/reloaded)
+  useEffect(() => {
+    if (!id || !qcForm || !qcForm.tarNo) return;
+    const saveTimeout = setTimeout(() => {
+      localStorage.setItem(`qc_draft_${id}`, JSON.stringify(qcForm));
+    }, 1000); // Debounce localStorage updates by 1 second
+    return () => clearTimeout(saveTimeout);
+  }, [qcForm, id]);
+
+  // Restore local draft logic on page mount
+  const handleRestoreLocalDraft = () => {
+    const saved = localStorage.getItem(`qc_draft_${id}`);
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        setQcForm(parsed);
+        toast.success('Draft Restored', 'Restored unsaved local changes successfully.');
+      } catch (e) {
+        console.error('Failed to parse saved QC draft', e);
+      }
+    }
+  };
+
   useEffect(() => {
     fetchJobDetails();
     fetchSpareParts();
@@ -710,20 +733,21 @@ const JobWorkflow: React.FC = () => {
     }
   };
 
-  const handleQcSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      const res = await api.post('/qc-assessment', {
-        jobId: job.id,
-        assessmentData: qcForm
-      });
-      setQcAssessment(res.data.assessment);
-      toast.success('QC Assessment Submitted', 'Assessment saved successfully and PDF generated.');
-      fetchJobDetails();
-    } catch (err: any) {
-      toast.error('Submission Failed', err.response?.data?.message || 'Failed to save QC Assessment.');
-    }
-  };
+   const handleQcSubmit = async (e: React.FormEvent) => {
+     e.preventDefault();
+     try {
+       const res = await api.post('/qc-assessment', {
+         jobId: job.id,
+         assessmentData: qcForm
+       });
+       setQcAssessment(res.data.assessment);
+       localStorage.removeItem(`qc_draft_${job.id}`); // Clear local draft cache
+       toast.success('QC Assessment Submitted', 'Assessment saved successfully and PDF generated.');
+       fetchJobDetails();
+     } catch (err: any) {
+       toast.error('Submission Failed', err.response?.data?.message || 'Failed to save QC Assessment.');
+     }
+   };
 
   // Handle forms submits
   const handleInspectionSubmit = async (e: React.FormEvent) => {
@@ -1526,6 +1550,22 @@ const JobWorkflow: React.FC = () => {
             </div>
 
             <div className="p-6">
+              {/* Draft Restoration Notice Banner */}
+              {localStorage.getItem(`qc_draft_${id}`) && (
+                <div className="mb-4 p-3 bg-blue-50/80 border border-blue-200/50 rounded-xl text-xs flex justify-between items-center text-blue-700 animate-fade-in font-medium">
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-2 w-2 bg-blue-500 rounded-full animate-ping"></span>
+                    💡 Unsaved local assessment changes detected for this ticket.
+                  </span>
+                  <button 
+                    onClick={handleRestoreLocalDraft}
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-[10px] font-black uppercase px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                  >
+                    Restore Draft
+                  </button>
+                </div>
+              )}
+
               {user?.role === 'SUPPORT' && (
                 <div className="mb-4 p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs font-semibold text-amber-700">
                   ⚠️ View-only Mode: Repair Coordinators do not have permission to log operations.
