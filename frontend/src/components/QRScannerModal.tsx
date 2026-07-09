@@ -17,30 +17,28 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
   const scannerId = 'qr-reader-container';
 
   useEffect(() => {
-    // Initialize html5-qrcode scanner
     const startScanner = async () => {
       try {
         const html5Qrcode = new Html5Qrcode(scannerId);
         scannerRef.current = html5Qrcode;
 
         await html5Qrcode.start(
-          { facingMode: 'environment' }, // Back camera preferred
+          { facingMode: 'environment' },
           {
             fps: 10,
-            qrbox: { width: 250, height: 250 }
+            qrbox: { width: 220, height: 220 }
           },
           async (decodedText) => {
-            // Success handler
-            console.log('QR Code scanned successfully:', decodedText);
+            console.log('QR Code scanned:', decodedText);
             stopScanner();
 
-            // Extract track ID from URL or code (e.g. FSR-2026-00010)
+            // Match FRND-2026-0006 or any PREFIX-YEAR-NUMBER format
             let trackId = '';
-            const match = decodedText.match(/FSR-\d{4}-\d{5}/i);
+            const match = decodedText.match(/([A-Z]+-\d{4}-\d+)/i);
             if (match) {
               trackId = match[0].toUpperCase();
             } else {
-              toast.error('Invalid QR Code', 'This code does not contain a valid FSRMS Track ID.');
+              toast.error('Invalid QR Code', 'This code does not contain a valid Track ID.');
               onClose();
               return;
             }
@@ -59,38 +57,38 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
               onClose();
             }
           },
-          (errorMessage) => {
-            // Constant verbose logging suppressed to prevent noise
+          () => {
+            // Suppress verbose per-frame error logs
           }
         );
       } catch (err: any) {
         console.error('Camera Scanner start failed:', err);
-        setErrorMsg('Unable to access camera. Please verify permission settings.');
+        setErrorMsg('Unable to access camera. Please check your browser permissions and try again.');
       }
     };
 
     startScanner();
-
-    return () => {
-      stopScanner();
-    };
+    return () => { stopScanner(); };
   }, []);
 
   const stopScanner = async () => {
     if (scannerRef.current && scannerRef.current.isScanning) {
-      try {
-        await scannerRef.current.stop();
-      } catch (e) {
-        console.error('Failed to stop camera stream:', e);
-      }
+      try { await scannerRef.current.stop(); } catch (e) {}
     }
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[99999] flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl border border-slate-100 animate-scale-in text-left">
+    <div
+      className="fixed inset-0 z-[99999] flex flex-col items-center justify-center"
+      style={{ backgroundColor: 'rgba(0,0,0,0.85)' }}
+    >
+      {/* Modal card — constrained so it never overflows screen */}
+      <div
+        className="bg-white rounded-3xl w-full shadow-2xl border border-slate-100 animate-scale-in text-left flex flex-col"
+        style={{ maxWidth: '360px', maxHeight: '90vh', margin: '0 16px' }}
+      >
         {/* Header */}
-        <div className="bg-slate-950 text-white px-5 py-4 flex justify-between items-center">
+        <div className="bg-slate-950 text-white px-5 py-4 flex justify-between items-center rounded-t-3xl shrink-0">
           <h3 className="font-extrabold text-xs tracking-wider uppercase flex items-center gap-2">
             <Camera className="h-4 w-4 text-cyan-400 animate-pulse" />
             Scan Inward Sticker QR
@@ -103,19 +101,20 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
           </button>
         </div>
 
-        {/* Scanner target container */}
-        <div className="p-6 flex flex-col items-center">
+        {/* Scanner area */}
+        <div className="p-5 flex flex-col items-center flex-1 overflow-hidden">
           {errorMsg ? (
             <div className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex flex-col items-center text-center text-xs text-rose-700 font-semibold gap-2">
               <AlertTriangle className="h-8 w-8 text-rose-600 animate-bounce" />
               <p>{errorMsg}</p>
             </div>
           ) : (
-            <div className="w-full space-y-4">
-              <div 
-                id={scannerId} 
-                className="w-full aspect-square bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden shadow-inner relative"
-                style={{ minHeight: '260px' }}
+            <div className="w-full space-y-3">
+              {/* The library injects video here — give it a fixed square size */}
+              <div
+                id={scannerId}
+                className="w-full bg-black rounded-2xl overflow-hidden"
+                style={{ height: '280px' }}
               />
               <p className="text-[10px] text-slate-400 text-center font-bold uppercase tracking-wider">
                 Align QR Code within the scanning frame
@@ -125,7 +124,7 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose }) => {
         </div>
 
         {/* Footer */}
-        <div className="bg-slate-50 px-6 py-4 flex justify-end">
+        <div className="bg-slate-50 px-6 py-4 flex justify-end rounded-b-3xl shrink-0">
           <button
             onClick={onClose}
             className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl text-xs cursor-pointer"
