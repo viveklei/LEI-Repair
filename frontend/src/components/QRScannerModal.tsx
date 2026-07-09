@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Html5Qrcode } from 'html5-qrcode';
-import { X, Camera, AlertTriangle } from 'lucide-react';
+import { X, Camera, AlertTriangle, Upload } from 'lucide-react';
 import api from '../services/api';
 import { useToast } from '../context/ToastContext';
 import { useNavigate } from 'react-router-dom';
@@ -12,17 +12,15 @@ interface QRScannerModalProps {
 
 export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanSuccess }) => {
   const html5QrCodeRef = useRef<Html5Qrcode | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
   
-  // Use a randomized unique element ID to prevent collisions when scanner components re-mount
+  // Dynamic random ID to avoid layout collision on re-mounts
   const [scannerId] = useState(() => `qr-reader-container-${Math.random().toString(36).substring(2, 9)}`);
 
   const handleQRDetected = async (raw: string) => {
-    // Alert user that scanning worked
-    console.log('Decoded text matches: ', raw);
-
     // If a custom callback is provided, route it there (for form auto-filling)
     if (onScanSuccess) {
       if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
@@ -34,13 +32,11 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
     }
 
     // Parse out Track ID from QR value
-    // QR can be raw text 'FRND-2026-0008' or full URL like 'https://domain.com/track/FRND-2026-0008'
     let trackId = '';
     const match = raw.match(/FRND-\d{4}-\d+/i);
     if (match) {
       trackId = match[0].toUpperCase();
     } else {
-      // Fallback regex to match any PREFIX-YEAR-NUMBER string just in case
       const genMatch = raw.match(/([A-Z]+-\d{4}-\d+)/i);
       if (genMatch) {
         trackId = genMatch[0].toUpperCase();
@@ -48,11 +44,11 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
     }
 
     if (!trackId) {
-      toast.error('Invalid QR Code', `Raw scanned text was: "${raw.substring(0, 30)}..."`);
+      toast.error('Scan Error', 'Invalid QR code. Could not detect a valid Tracking ID.');
       return;
     }
 
-    // Stop scanner first to avoid duplicate fires while loading
+    // Stop camera before navigation to release hardware resources
     if (html5QrCodeRef.current && html5QrCodeRef.current.isScanning) {
       try {
         await html5QrCodeRef.current.stop();
@@ -76,10 +72,24 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    
+    if (html5QrCodeRef.current) {
+      try {
+        toast.info('Decoding image...');
+        const decodedText = await html5QrCodeRef.current.scanFile(file, true);
+        handleQRDetected(decodedText);
+      } catch (err) {
+        toast.error('No QR Found', 'Failed to read a QR code from this image. Try taking a clearer picture.');
+      }
+    }
+  };
+
   useEffect(() => {
     let activeScanner: Html5Qrcode | null = null;
     
-    // Tiny delay to ensure React commits the div to the DOM
     const timer = setTimeout(() => {
       try {
         const html5QrCode = new Html5Qrcode(scannerId);
@@ -99,15 +109,14 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
             handleQRDetected(decodedText);
           },
           () => {
-            // Verbose errors suppressed to prevent spam
+            // Suppress verbose scanner matching failure prints
           }
         ).catch((err) => {
-          console.error('Html5Qrcode initialization failed:', err);
-          setErrorMsg('Camera access denied or device has no camera. Please allow camera permission.');
+          console.error('Html5Qrcode camera access failed:', err);
+          // Don't show blocking error — instead fall back gracefully to file input
         });
       } catch (e) {
         console.error('Html5Qrcode instance creation failed:', e);
-        setErrorMsg('Scanner could not be initialized.');
       }
     }, 100);
 
@@ -156,6 +165,28 @@ export const QRScannerModal: React.FC<QRScannerModalProps> = ({ onClose, onScanS
               </p>
             </>
           )}
+
+          {/* Graceful Fallback Options */}
+          <div style={{ width: '100%', borderTop: '1px solid #f1f5f9', paddingTop: 14, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <input 
+              type="file" 
+              accept="image/*" 
+              ref={fileInputRef} 
+              onChange={handleFileUpload} 
+              style={{ display: 'none' }} 
+            />
+            <button 
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+                backgroundColor: '#f8fafc', border: '1px dashed #cbd5e1', padding: '10px',
+                borderRadius: '12px', fontSize: '11px', fontWeight: 700, color: '#475569', cursor: 'pointer'
+              }}
+            >
+              <Upload size={14} />
+              Take Photo / Choose Image Instead
+            </button>
+          </div>
         </div>
 
         {/* Footer */}
