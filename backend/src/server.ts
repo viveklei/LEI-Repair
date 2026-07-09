@@ -59,4 +59,19 @@ const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {
   console.log(`🚀 FSRMS Server running on port ${PORT}`);
   console.log(`📂 Public assets path: ${PUBLIC_DIR}`);
+
+  // Import and trigger manager approvals scheduler checks
+  import('./services/scheduler').then(({ runManagerApprovalCheck }) => {
+    // Run once on startup (with 10-second delay so server boots cleanly)
+    setTimeout(() => {
+      runManagerApprovalCheck();
+    }, 10000);
+
+    // Schedule to run every 24 hours (86400000 ms)
+    setInterval(() => {
+      runManagerApprovalCheck();
+    }, 24 * 60 * 60 * 1000);
+  }).catch((err) => {
+    console.error('❌ Failed to initialize approvals cron scheduler:', err);
+  });
 });

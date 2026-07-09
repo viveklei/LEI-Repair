@@ -80,6 +80,7 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   // Active job count badge (fetched once)
   const [activeJobCount, setActiveJobCount] = useState<number | null>(null);
+  const [pendingApprovalsCount, setPendingApprovalsCount] = useState<number | null>(null);
 
   // System Notifications
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -108,6 +109,7 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       const s = r.data;
       const active = (s.underInspection ?? 0) + (s.underRepair ?? 0) + (s.awaitingApproval ?? 0) + (s.testing ?? 0);
       setActiveJobCount(active);
+      setPendingApprovalsCount(s.pendingManagerApprovals ?? 0);
     }).catch(() => {});
     fetchNotifications();
   }, [user, isPortal, fetchNotifications]);
@@ -294,7 +296,8 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               {filteredMenu.map(item => {
                 const Icon = item.icon;
                 const active = location.pathname === item.path || (item.path !== '/' && location.pathname.startsWith(item.path));
-                const showBadge = item.path === '/jobs' && activeJobCount && activeJobCount > 0;
+                const countValue = item.path === '/jobs' ? activeJobCount : (item.path === '/approvals' ? pendingApprovalsCount : 0);
+                const showBadge = countValue && countValue > 0;
                 return (
                   <Link
                     key={item.path}
@@ -306,8 +309,12 @@ const Navigation: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     <Icon className={`h-5 w-5 shrink-0 ${active ? 'text-white' : 'text-slate-500'}`} />
                     <span className="flex-1">{item.name}</span>
                     {showBadge ? (
-                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${active ? 'bg-white/20 text-white' : 'bg-blue-600 text-white'}`}>
-                        {activeJobCount}
+                      <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                        item.path === '/approvals'
+                          ? (active ? 'bg-white/20 text-white' : 'bg-rose-500 text-white')
+                          : (active ? 'bg-white/20 text-white' : 'bg-blue-600 text-white')
+                      }`}>
+                        {countValue}
                       </span>
                     ) : (
                       <ChevronRight className={`h-4 w-4 ${active ? 'text-white/60' : 'text-slate-300'}`} />

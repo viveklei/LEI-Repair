@@ -254,4 +254,78 @@ export class NotificationService {
       </div>
     `;
   }
+
+  /** Formats a summary digest list email of all currently pending manager approvals */
+  static getManagerApprovalsDigestHtmlTemplate(pendingItems: Array<{ trackId: string; companyName: string; brand: string; powerRating: string; verifiedBy: string; daysPending: number }>, websiteUrl: string): string {
+    const logoPath = path.join(__dirname, '..', '..', 'public', 'logo.png');
+    const hasLogo = fs.existsSync(logoPath);
+    
+    let tableRows = '';
+    for (const item of pendingItems) {
+      tableRows += `
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 12px 8px; font-weight: 700; color: #2563eb; font-size: 13px;">${item.trackId}</td>
+          <td style="padding: 12px 8px; font-size: 13px; font-weight: 600; color: #0f172a;">${item.companyName}</td>
+          <td style="padding: 12px 8px; font-size: 12px; color: #475569;">${item.brand} (${item.powerRating})</td>
+          <td style="padding: 12px 8px; font-size: 12px; color: #475569;">${item.verifiedBy}</td>
+          <td style="padding: 12px 8px; text-align: center;"><span style="background-color: #ffe4e6; color: #e11d48; padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 700;">${item.daysPending} days</span></td>
+        </tr>
+      `;
+    }
+
+    return `
+      <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #f8fafc; padding: 40px 20px; color: #334155; line-height: 1.6;">
+        <div style="max-width: 650px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); border: 1px solid #e2e8f0;">
+          
+          <!-- HEADER -->
+          <div style="background-color: #e11d48; padding: 24px 30px; text-align: center; border-bottom: 3px solid #be123c;">
+            ${hasLogo ? '<img src="cid:logo" alt="Laser Experts India Logo" style="height: 48px; width: auto; vertical-align: middle; margin-bottom: 8px;" />' : ''}
+            <h2 style="color: #ffffff; margin: 0; font-size: 20px; font-weight: 600; letter-spacing: 0.5px;">⚠️ Action Required: Pending QC Approvals Digest</h2>
+          </div>
+
+          <!-- CONTENT BODY -->
+          <div style="padding: 35px 30px;">
+            <p style="margin-top: 0; font-size: 15px; color: #1e293b;">Dear <strong>Service Manager</strong>,</p>
+            <p style="font-size: 14px; color: #475569;">This is a daily reminder that the following <strong>${pendingItems.length} QC verifications</strong> are waiting for your approval to proceed with customer quotation release or shipping dispatch:</p>
+            
+            <div style="margin: 24px 0; overflow-x: auto;">
+              <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead>
+                  <tr style="background-color: #f1f5f9; border-bottom: 2px solid #cbd5e1;">
+                    <th style="padding: 10px 8px; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Track ID</th>
+                    <th style="padding: 10px 8px; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Company</th>
+                    <th style="padding: 10px 8px; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Laser Specs</th>
+                    <th style="padding: 10px 8px; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700;">Verified By</th>
+                    <th style="padding: 10px 8px; font-size: 11px; text-transform: uppercase; color: #64748b; font-weight: 700; text-align: center;">Age</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${tableRows}
+                </tbody>
+              </table>
+            </div>
+
+            <!-- PORTAL LINK -->
+            <div style="text-align: center; margin: 30px 0;">
+              <a href="${websiteUrl}/approvals" target="_blank" style="display: inline-block; background-color: #e11d48; color: #ffffff; padding: 12px 28px; font-weight: 700; font-size: 13px; text-decoration: none; border-radius: 8px; box-shadow: 0 4px 6px rgba(225, 29, 72, 0.25);">
+                Review Approvals Dashboard
+              </a>
+            </div>
+
+            <p style="font-size: 12px; color: #94a3b8; font-style: italic; margin-bottom: 0;">This email is auto-generated daily until all pending approvals are cleared.</p>
+          </div>
+
+          <!-- FOOTER -->
+          <div style="background-color: #f1f5f9; padding: 30px; border-top: 1px solid #e2e8f0; font-size: 12px; color: #475569; text-align: center;">
+            <div style="font-weight: 700; color: #0f172a; margin-bottom: 8px;">LASER EXPERTS INDIA LLP</div>
+            <div style="margin-bottom: 12px; line-height: 1.4;">
+              <strong>Hosur Service Hub:</strong><br/>
+              No. 27/3, Anumepalli, Begapalli Road, Hosur, Tamil Nadu - 635 126
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `;
+  }
 }

@@ -2697,6 +2697,11 @@ export class ApiController {
         inspectionsLogged: eng.inspections.length
       }));
 
+      // Count Manager Verification requests (QC final verifications) in status PENDING_APPROVAL
+      const pendingManagerApprovals = await prisma.verification.count({
+        where: { status: 'PENDING_APPROVAL' }
+      });
+
       res.json({
         totalJobs,
         receivedToday,
@@ -2712,7 +2717,8 @@ export class ApiController {
         revenueThisMonth,
         revenueThisYear,
         brandStats,
-        engineerProductivity
+        engineerProductivity,
+        pendingManagerApprovals
       });
     } catch (e: any) {
       res.status(500).json({ message: e.message });
