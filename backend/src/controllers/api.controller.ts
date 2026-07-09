@@ -2093,7 +2093,7 @@ export class ApiController {
 
       const job = await prisma.serviceJob.findFirst({
         where: { id: jobId },
-        include: { customer: true, payments: true }
+        include: { customer: true, payments: true, laserSource: true }
       });
       if (!job) return res.status(404).json({ message: 'Job not found' });
 
