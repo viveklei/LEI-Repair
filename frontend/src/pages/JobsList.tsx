@@ -396,7 +396,7 @@ const JobsList: React.FC = () => {
           </head>
           <body>
             <div class="sticker-box">
-              <img src={fileUrl('/logo.png')} style="height: 36px; margin: 0 auto 8px auto; display: block; object-fit: contain;" />
+              <img src="${window.location.origin}/logo.png" style="height: 36px; margin: 0 auto 8px auto; display: block; object-fit: contain;" />
               <div class="title">Laser Experts India</div>
               <div class="track-id">${job.trackId}</div>
               <img class="qr-image" src="${job.qrCodeDataUrl || `https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${window.location.origin}/track/${job.trackId}`}" alt="Tracking QR Code" />
