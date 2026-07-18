@@ -1155,8 +1155,10 @@ const JobWorkflow: React.FC = () => {
           {qcAssessment?.pdfUrl && (
             <button
               onClick={async () => {
-                try {
-                  const response = await fetch(fileUrl(qcAssessment.pdfUrl));
+                  const token = localStorage.getItem('accessToken');
+                  const response = await fetch(fileUrl(qcAssessment.pdfUrl), {
+                    headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                  });
                   if (!response.ok) throw new Error('Download failed');
                   const blob = await response.blob();
                   const url = window.URL.createObjectURL(blob);
@@ -1922,7 +1924,10 @@ const JobWorkflow: React.FC = () => {
                               const q = job.quotations[0];
                               try {
                                 const res = await api.get(`/quotation/${q.id}/pdf`);
-                                const pdfResponse = await fetch(fileUrl(res.data.pdfUrl));
+                                const token = localStorage.getItem('accessToken');
+                                const pdfResponse = await fetch(fileUrl(res.data.pdfUrl), {
+                                  headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                                });
                                 if (!pdfResponse.ok) throw new Error('Download failed');
                                 const blob = await pdfResponse.blob();
                                 const url = window.URL.createObjectURL(blob);

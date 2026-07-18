@@ -3091,6 +3091,25 @@ export class ApiController {
       const assessment = await prisma.qcAssessment.findUnique({
         where: { jobId }
       });
+      if (assessment && assessment.pdfUrl) {
+        const filepath = path.join(__dirname, '..', '..', 'public', assessment.pdfUrl);
+        if (!fs.existsSync(filepath)) {
+          const job = await prisma.serviceJob.findFirst({
+            where: { id: jobId, isDeleted: false },
+            include: { customer: true, laserSource: true }
+          });
+          if (job) {
+            console.log(`Regenerating missing QC Assessment PDF for job ${job.trackId}...`);
+            const parsedData = JSON.parse(assessment.assessmentData);
+            const pdfUrl = await PdfService.generateQcAssessmentPdf(parsedData, job);
+            await prisma.qcAssessment.update({
+              where: { jobId },
+              data: { pdfUrl }
+            });
+            assessment.pdfUrl = pdfUrl;
+          }
+        }
+      }
       res.json(assessment || null);
     } catch (e: any) {
       res.status(500).json({ message: e.message });
