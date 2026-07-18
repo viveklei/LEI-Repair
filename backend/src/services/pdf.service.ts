@@ -37,7 +37,7 @@ export class PdfService {
       const currencySymbol = isHelvetica ? 'Rs. ' : '\u20B9';
 
       const year = new Date(quotation.createdAt).getFullYear().toString().substring(2);
-      const seq = job.trackId.split('-')[2] || '00001';
+      const seq = (job.trackId || 'FSR-2026-00001').split('-')[2] || '00001';
       const estimateNo = `LEIQ${year}-${seq}`;
       const estimateDate = new Date(quotation.createdAt).toLocaleDateString('en-GB');
 
