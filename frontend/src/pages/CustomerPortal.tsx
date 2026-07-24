@@ -314,14 +314,31 @@ const CustomerPortal: React.FC = () => {
                           {file.originalName}
                         </span>
                       </div>
-                      <a
-                        href={fileUrl(file.fileUrl)}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-lg transition-colors shrink-0"
+                      <button
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('accessToken') || localStorage.getItem('portalToken');
+                            const response = await fetch(fileUrl(file.fileUrl), {
+                              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                            });
+                            if (!response.ok) throw new Error('Download failed');
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.setAttribute('download', file.originalName);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.parentNode?.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                          } catch (e) {
+                            alert('Failed to download document file');
+                          }
+                        }}
+                        className="p-1.5 hover:bg-slate-200 text-slate-500 hover:text-slate-700 rounded-lg transition-colors shrink-0 cursor-pointer"
                       >
                         <Download className="h-4 w-4" />
-                      </a>
+                      </button>
                     </div>
                   );
                 })}

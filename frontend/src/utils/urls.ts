@@ -25,7 +25,14 @@ export const fileUrl = (path: string): string => {
     return path;
   }
   // Relative path — prepend base server URL
-  return `${BASE_SERVER_URL}${path}`;
+  let fullUrl = `${BASE_SERVER_URL}${path}`;
+  if (fullUrl.includes('/api/uploads/')) {
+    const token = localStorage.getItem('accessToken') || localStorage.getItem('portalToken');
+    if (token) {
+      fullUrl = fullUrl.includes('?') ? `${fullUrl}&token=${token}` : `${fullUrl}?token=${token}`;
+    }
+  }
+  return fullUrl;
 };
 
 // Helper to build customer portal tracking URL

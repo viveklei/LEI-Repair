@@ -14,10 +14,15 @@ export interface AuthenticatedRequest extends Request {
 
 export const authenticateJWT = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
   const authHeader = req.headers.authorization;
+  let token = '';
 
   if (authHeader) {
-    const token = authHeader.split(' ')[1]; // Bearer <token>
+    token = authHeader.split(' ')[1]; // Bearer <token>
+  } else if (req.query.token) {
+    token = req.query.token as string;
+  }
 
+  if (token) {
     jwt.verify(token, JWT_SECRET, (err, decoded: any) => {
       if (err) {
         return res.status(403).json({ message: 'Forbidden: Invalid or expired access token' });
