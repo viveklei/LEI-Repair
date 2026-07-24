@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import api from '../services/api';
 import { Package, AlertTriangle, RefreshCw, Trash2, X, Search, TrendingDown, BarChart3, IndianRupee, Eye, Pencil, ChevronRight } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { fileUrl } from '../utils/urls';
 
 const SpareParts: React.FC = () => {
   const { user } = useAuth();
@@ -257,8 +258,20 @@ const SpareParts: React.FC = () => {
     try {
       const res = await api.post('/spare-parts/low-stock/pdf', poForm);
       if (res.data.pdfUrl) {
-        const baseUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000/api').replace('/api', '');
-        window.open(`${baseUrl}${res.data.pdfUrl}`, '_blank');
+        const token = localStorage.getItem('accessToken');
+        const pdfResponse = await fetch(fileUrl(res.data.pdfUrl), {
+          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+        if (!pdfResponse.ok) throw new Error('Download failed');
+        const blob = await pdfResponse.blob();
+        const url = window.URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `PurchaseOrder_${poForm.poNumber || Date.now()}.pdf`);
+        document.body.appendChild(link);
+        link.click();
+        link.parentNode?.removeChild(link);
+        window.URL.revokeObjectURL(url);
         setShowPoModal(false);
       }
     } catch (err: any) {
