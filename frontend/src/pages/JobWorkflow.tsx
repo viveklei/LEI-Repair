@@ -1155,6 +1155,7 @@ const JobWorkflow: React.FC = () => {
           {qcAssessment?.pdfUrl && (
             <button
               onClick={async () => {
+                try {
                   const token = localStorage.getItem('accessToken');
                   const response = await fetch(fileUrl(qcAssessment.pdfUrl), {
                     headers: token ? { 'Authorization': `Bearer ${token}` } : {}
