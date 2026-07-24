@@ -29,8 +29,9 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Static file hosting for upload receipts, photos, and generated reports
+import { authenticateJWT } from './middleware/auth.middleware';
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
-app.use('/uploads', express.static(path.join(PUBLIC_DIR, 'uploads')));
+app.use('/uploads', authenticateJWT, express.static(path.join(PUBLIC_DIR, 'uploads')));
 app.use(express.static(PUBLIC_DIR));
 
 // Bind Router API

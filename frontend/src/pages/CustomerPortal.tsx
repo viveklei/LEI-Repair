@@ -440,12 +440,25 @@ const CustomerPortal: React.FC = () => {
                     onClick={async () => {
                       try {
                         const res = await api.get(`/quotation/${job.quotations[0].id}/pdf`);
-                        window.open(fileUrl(res.data.pdfUrl), '_blank');
+                        const token = localStorage.getItem('accessToken') || localStorage.getItem('portalToken');
+                        const response = await fetch(fileUrl(res.data.pdfUrl), {
+                          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                        });
+                        if (!response.ok) throw new Error('Download failed');
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', `Quotation_${job.trackId}.pdf`);
+                        document.body.appendChild(link);
+                        link.click();
+                        link.parentNode?.removeChild(link);
+                        window.URL.revokeObjectURL(url);
                       } catch (e) {
                         alert('Failed to download quotation PDF');
                       }
                     }}
-                    className="p-2 bg-white rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600"
+                    className="p-2 bg-white rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 cursor-pointer"
                   >
                     <Download className="h-4 w-4" />
                   </button>
@@ -458,13 +471,31 @@ const CustomerPortal: React.FC = () => {
                     <p className="text-xs font-bold text-slate-800">QC Service Report</p>
                     <p className="text-[10px] text-slate-500">Validation: PASSED</p>
                   </div>
-                  <a
-                    href={fileUrl(job.serviceReports[0].pdfUrl)}
-                    target="_blank" rel="noreferrer"
-                    className="p-2 bg-white rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600"
+                  <button
+                    onClick={async () => {
+                      try {
+                        const token = localStorage.getItem('accessToken') || localStorage.getItem('portalToken');
+                        const response = await fetch(fileUrl(job.serviceReports[0].pdfUrl), {
+                          headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                        });
+                        if (!response.ok) throw new Error('Download failed');
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.setAttribute('download', `ServiceReport_${job.trackId}.pdf`);
+                        document.body.appendChild(link);
+                        link.click();
+                        link.parentNode?.removeChild(link);
+                        window.URL.revokeObjectURL(url);
+                      } catch (e) {
+                        alert('Failed to download service report PDF');
+                      }
+                    }}
+                    className="p-2 bg-white rounded-lg border border-slate-200 hover:bg-slate-100 text-slate-600 cursor-pointer"
                   >
                     <Download className="h-4 w-4" />
-                  </a>
+                  </button>
                 </div>
               )}
             </div>
