@@ -7,10 +7,33 @@ import dotenv from 'dotenv';
 import apiRouter from './routes/api';
 import { setIoInstance } from './controllers/api.controller';
 
+import helmet from 'helmet';
+import compression from 'compression';
+import rateLimit from 'express-rate-limit';
+
 dotenv.config();
 
 const app = express();
 const server = http.createServer(app);
+
+// Security & Performance Middlewares
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: 'cross-origin' }, // Allows cross-origin asset loading for static PDFs/photos
+  contentSecurityPolicy: false // Keeps SPA inline assets rendering smoothly
+}));
+app.use(compression()); // Compress all HTTP payloads (GZIP/Brotli)
+
+// Auth Rate Limiting (50 login attempts per 15 minutes per IP)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 50,
+  message: { message: 'Too many login attempts from this IP, please try again after 15 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+app.use('/api/auth/login', authLimiter);
+app.use('/api/portal/login', authLimiter);
 
 // Configure Socket.IO
 const io = new Server(server, {
@@ -39,6 +62,19 @@ app.use('/api', apiRouter);
 // Basic check route
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', time: new Date().toISOString() });
+});
+
+// Global Express Central Error Handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Unhandled Server Error:', err);
+  if (res.headersSent) {
+    return next(err);
+  }
+  res.status(500).json({
+    message: process.env.NODE_ENV === 'production' 
+      ? 'An unexpected server error occurred. Please try again.' 
+      : err.message || 'Internal Server Error'
+  });
 });
 
 // Socket.IO Event Handler

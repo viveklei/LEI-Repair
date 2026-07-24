@@ -594,7 +594,7 @@ const SpareParts: React.FC = () => {
       {/* --- ADD NEW SPARE PART MODAL --- */}
       {showAddModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-md overflow-hidden animate-fade-in text-left">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto animate-fade-in text-left">
             <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
               <h3 className="font-extrabold text-sm tracking-wide uppercase flex items-center gap-2">
                 <Package className="h-4 w-4 text-blue-400" />
@@ -860,7 +860,7 @@ const SpareParts: React.FC = () => {
       {/* --- CUSTOM PURCHASE ORDER WIZARD MODAL --- */}
       {showPoModal && (
         <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[9999] flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-3xl overflow-hidden animate-fade-in text-left">
+          <div className="bg-white rounded-2xl border border-slate-100 shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto animate-fade-in text-left">
             <div className="bg-slate-900 text-white px-6 py-4 flex justify-between items-center">
               <div>
                 <h3 className="font-extrabold text-sm tracking-wide uppercase">
