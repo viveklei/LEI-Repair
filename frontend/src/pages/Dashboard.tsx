@@ -665,7 +665,11 @@ const Dashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-[10px] font-black text-amber-800 uppercase tracking-wider">Awaiting Parts</p>
-            <p className="text-xl font-black text-amber-700 mt-0.5">{stats.waitingParts}</p>
+            <p className="text-xl font-black text-amber-700 mt-0.5">
+              {user?.role === 'ENGINEER' 
+                ? myAssignedJobs.filter(j => j.status === 'WAITING_SPARE_PARTS').length 
+                : stats.waitingParts}
+            </p>
             <p className="text-[9px] text-amber-600 font-semibold mt-0.5">Jobs blocked — spares not yet received</p>
           </div>
         </div>
@@ -675,7 +679,11 @@ const Dashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-[10px] font-black text-rose-800 uppercase tracking-wider">Pending Payments</p>
-            <p className="text-xl font-black text-rose-700 mt-0.5">{stats.pendingPayments}</p>
+            <p className="text-xl font-black text-rose-700 mt-0.5">
+              {user?.role === 'ENGINEER' 
+                ? myAssignedJobs.filter(j => j.paymentStatus !== 'PAID').length 
+                : stats.pendingPayments}
+            </p>
             <p className="text-[9px] text-rose-600 font-semibold mt-0.5">Jobs with unpaid or partial amounts</p>
           </div>
         </div>
@@ -685,7 +693,11 @@ const Dashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-[10px] font-black text-cyan-800 uppercase tracking-wider">Under Active Repair</p>
-            <p className="text-xl font-black text-cyan-700 mt-0.5">{stats.underRepair}</p>
+            <p className="text-xl font-black text-cyan-700 mt-0.5">
+              {user?.role === 'ENGINEER' 
+                ? myAssignedJobs.filter(j => ['REPAIR_INITIATED', 'UNDER_REPAIR'].includes(j.status)).length 
+                : stats.underRepair}
+            </p>
             <p className="text-[9px] text-cyan-600 font-semibold mt-0.5">Currently being worked on by engineers</p>
           </div>
         </div>
@@ -695,7 +707,11 @@ const Dashboard: React.FC = () => {
           </div>
           <div>
             <p className="text-[10px] font-black text-teal-800 uppercase tracking-wider">Ready for Dispatch</p>
-            <p className="text-xl font-black text-teal-700 mt-0.5">{stats.readyDispatch}</p>
+            <p className="text-xl font-black text-teal-700 mt-0.5">
+              {user?.role === 'ENGINEER' 
+                ? myAssignedJobs.filter(j => j.status === 'READY_FOR_DISPATCH').length 
+                : stats.readyDispatch}
+            </p>
             <p className="text-[9px] text-teal-600 font-semibold mt-0.5">Repaired &amp; QC passed — awaiting pickup</p>
           </div>
         </div>
