@@ -2491,13 +2491,31 @@ const JobWorkflow: React.FC = () => {
                         <span className="badge-status badge-approved flex items-center gap-1">
                           <CheckCircle className="h-3 w-3" /> Service Report Compiled
                         </span>
-                        <a
-                          href={fileUrl(job.serviceReports[0].pdfUrl)}
-                          target="_blank" rel="noreferrer"
-                          className="text-xs text-blue-600 font-bold hover:underline"
+                        <button
+                          onClick={async () => {
+                            try {
+                              const token = localStorage.getItem('accessToken');
+                              const response = await fetch(fileUrl(job.serviceReports[0].pdfUrl), {
+                                headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                              });
+                              if (!response.ok) throw new Error('Download failed');
+                              const blob = await response.blob();
+                              const url = window.URL.createObjectURL(blob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.setAttribute('download', `ServiceReport_${job.trackId}.pdf`);
+                              document.body.appendChild(link);
+                              link.click();
+                              link.parentNode?.removeChild(link);
+                              window.URL.revokeObjectURL(url);
+                            } catch (e) {
+                              alert('Failed to download service report PDF');
+                            }
+                          }}
+                          className="text-xs text-blue-600 font-bold hover:underline bg-transparent border-none p-0 cursor-pointer"
                         >
-                          View Report PDF &rarr;
-                        </a>
+                          Download Report PDF &rarr;
+                        </button>
                       </div>
                     ) : (
                       <form onSubmit={handleReportSubmit} className="space-y-3">
@@ -2648,13 +2666,31 @@ const JobWorkflow: React.FC = () => {
                   </div>
                   {job.serviceReports && job.serviceReports.length > 0 && (
                     <div className="inline-block pt-2">
-                      <a
-                        href={fileUrl(job.serviceReports[0].pdfUrl)}
-                        target="_blank" rel="noreferrer"
-                        className="text-xs text-blue-600 font-bold hover:underline"
+                      <button
+                        onClick={async () => {
+                          try {
+                            const token = localStorage.getItem('accessToken');
+                            const response = await fetch(fileUrl(job.serviceReports[0].pdfUrl), {
+                              headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+                            });
+                            if (!response.ok) throw new Error('Download failed');
+                            const blob = await response.blob();
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.setAttribute('download', `ServiceReport_${job.trackId}.pdf`);
+                            document.body.appendChild(link);
+                            link.click();
+                            link.parentNode?.removeChild(link);
+                            window.URL.revokeObjectURL(url);
+                          } catch (e) {
+                            alert('Failed to download final service report PDF');
+                          }
+                        }}
+                        className="text-xs text-blue-600 font-bold hover:underline bg-transparent border-none p-0 cursor-pointer"
                       >
                         Download Final Service Report PDF &rarr;
-                      </a>
+                      </button>
                     </div>
                   )}
                 </div>
