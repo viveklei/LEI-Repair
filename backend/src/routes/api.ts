@@ -11,6 +11,7 @@ router.post('/auth/refresh', ApiController.refreshToken);
 router.post('/portal/login', ApiController.customerPortalLogin);
 router.post('/portal/check-email', ApiController.checkEmailAddress);
 router.get('/public/track/:trackId', ApiController.getPublicJobStatus);
+router.get('/uploads/:filename', authenticateJWT, ApiController.serveUploadedFile);
 
 // --- AUTHENTICATED PROFILE ---
 router.get('/auth/profile', authenticateJWT, ApiController.getProfile);

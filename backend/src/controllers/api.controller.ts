@@ -3467,4 +3467,25 @@ export class ApiController {
       res.status(500).json({ message: e.message });
     }
   }
+
+  static async serveUploadedFile(req: AuthenticatedRequest, res: Response) {
+    try {
+      const { filename } = req.params;
+      // Sanitize input to prevent directory traversal
+      const safeFilename = path.basename(filename);
+      const filepath = path.join(__dirname, '..', '..', 'public', 'uploads', safeFilename);
+      
+      if (!fs.existsSync(filepath)) {
+        return res.status(404).json({ message: 'Requested PDF file not found' });
+      }
+
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename="${safeFilename}"`);
+      
+      const fileStream = fs.createReadStream(filepath);
+      fileStream.pipe(res);
+    } catch (e: any) {
+      res.status(500).json({ message: e.message });
+    }
+  }
 }

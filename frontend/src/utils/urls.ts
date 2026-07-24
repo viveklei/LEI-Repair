@@ -14,6 +14,12 @@ export const fileUrl = (path: string): string => {
   if (path.includes('localhost:5000')) {
     path = path.replace(/https?:\/\/localhost:5000/g, '');
   }
+  // Convert static uploads path to authenticated api route
+  if (path.startsWith('/uploads/')) {
+    path = path.replace('/uploads/', '/api/uploads/');
+  } else if (path.startsWith('uploads/')) {
+    path = path.replace('uploads/', '/api/uploads/');
+  }
   // If already a full URL with correct base, return as-is
   if (path.startsWith('http://') || path.startsWith('https://')) {
     return path;
