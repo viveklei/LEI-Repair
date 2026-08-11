@@ -21,21 +21,8 @@ export class ZohoService {
       throw new Error('Zoho Books configuration credentials are missing in .env');
     }
 
-    const tokenUrl = `${accountsUrl}/oauth/v2/token`;
-    const params = new URLSearchParams({
-      refresh_token: refreshToken,
-      client_id: clientId,
-      client_secret: clientSecret,
-      grant_type: 'refresh_token',
-    });
-
-    const response = await fetch(tokenUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: params.toString(),
-    });
+    const tokenUrl = `${accountsUrl}/oauth/v2/token?refresh_token=${encodeURIComponent(refreshToken)}&client_id=${encodeURIComponent(clientId)}&client_secret=${encodeURIComponent(clientSecret)}&grant_type=refresh_token`;
+    const response = await fetch(tokenUrl, { method: 'POST' });
 
     if (!response.ok) {
       const errText = await response.text();
