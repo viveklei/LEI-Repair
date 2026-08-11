@@ -51,29 +51,37 @@ export class ZohoService {
         throw new Error('ZOHO_ORG_ID is missing in .env');
       }
 
-      // Search contacts in Zoho Books
-      const searchUrl = `${apiUrl}/contacts?organization_id=${orgId}&search_text=${encodeURIComponent(searchText)}`;
-      const response = await fetch(searchUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Zoho-oauthtoken ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      let allContacts: any[] = [];
+      let page = 1;
+      let hasMore = true;
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`Zoho API searchContacts failed: ${errText}`);
-        return [];
-      }
+      while (hasMore && page <= 25) { // Fetch up to 5,000 records
+        const searchUrl = `${apiUrl}/contacts?organization_id=${orgId}&search_text=${encodeURIComponent(searchText)}&per_page=200&page=${page}`;
+        const response = await fetch(searchUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Zoho-oauthtoken ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-      const data: any = await response.json();
-      if (!data.contacts) {
-        return [];
+        if (!response.ok) {
+          const errText = await response.text();
+          console.error(`Zoho API searchContacts failed (page ${page}): ${errText}`);
+          break;
+        }
+
+        const data: any = await response.json();
+        if (data.contacts && data.contacts.length > 0) {
+          allContacts.push(...data.contacts);
+        }
+
+        hasMore = data.page_context ? data.page_context.has_more_page : false;
+        page++;
       }
 
       // Map Zoho Books contact details to our customer schema
-      return data.contacts.map((contact: any) => ({
+      return allContacts.map((contact: any) => ({
         zohoContactId: contact.contact_id,
         companyName: contact.company_name || contact.contact_name,
         customerName: contact.contact_name,
@@ -101,29 +109,41 @@ export class ZohoService {
         throw new Error('ZOHO_ORG_ID is missing in .env');
       }
 
-      // Use company_name_contains for precise server-side filtering (search_text does not reliably filter)
       const encodedSearch = encodeURIComponent(searchText);
-      const byCompanyUrl = `${apiUrl}/contacts?organization_id=${orgId}&contact_type=vendor&company_name_contains=${encodedSearch}`;
-      const byContactUrl = `${apiUrl}/contacts?organization_id=${orgId}&contact_type=vendor&contact_name_contains=${encodedSearch}`;
+      let allContacts: any[] = [];
+      let page = 1;
+      let hasMore = true;
 
-      const [companyRes, contactRes] = await Promise.all([
-        fetch(byCompanyUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
-        fetch(byContactUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
-      ]);
+      while (hasMore && page <= 25) {
+        const byCompanyUrl = `${apiUrl}/contacts?organization_id=${orgId}&contact_type=vendor&company_name_contains=${encodedSearch}&per_page=200&page=${page}`;
+        const byContactUrl = `${apiUrl}/contacts?organization_id=${orgId}&contact_type=vendor&contact_name_contains=${encodedSearch}&per_page=200&page=${page}`;
 
-      if (!companyRes.ok && !contactRes.ok) {
-        const errText = await companyRes.text();
-        console.error(`Zoho API searchVendors failed: ${errText}`);
-        return [];
+        const [companyRes, contactRes] = await Promise.all([
+          fetch(byCompanyUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
+          fetch(byContactUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
+        ]);
+
+        if (!companyRes.ok && !contactRes.ok) {
+          break;
+        }
+
+        const companyData: any = companyRes.ok ? await companyRes.json() : { contacts: [] };
+        const contactData: any = contactRes.ok ? await contactRes.json() : { contacts: [] };
+
+        const fetched = [...(companyData.contacts || []), ...(contactData.contacts || [])];
+        allContacts.push(...fetched);
+
+        const companyHasMore = companyData.page_context ? companyData.page_context.has_more_page : false;
+        const contactHasMore = contactData.page_context ? contactData.page_context.has_more_page : false;
+
+        hasMore = companyHasMore || contactHasMore;
+        page++;
       }
-
-      const companyData: any = companyRes.ok ? await companyRes.json() : { contacts: [] };
-      const contactData: any = contactRes.ok ? await contactRes.json() : { contacts: [] };
 
       // Merge & deduplicate by contact_id
       const seen = new Set<string>();
       const combined: any[] = [];
-      for (const c of [...(companyData.contacts || []), ...(contactData.contacts || [])]) {
+      for (const c of allContacts) {
         if (!seen.has(c.contact_id)) {
           seen.add(c.contact_id);
           combined.push(c);
@@ -229,27 +249,36 @@ export class ZohoService {
         throw new Error('ZOHO_ORG_ID is missing in .env');
       }
 
-      const itemsUrl = `${apiUrl}/items?organization_id=${orgId}`;
-      const response = await fetch(itemsUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Zoho-oauthtoken ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      let allItems: any[] = [];
+      let page = 1;
+      let hasMore = true;
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`Zoho API fetchItems failed: ${errText}`);
-        return [];
+      while (hasMore && page <= 25) { // Fetch up to 5,000 items
+        const itemsUrl = `${apiUrl}/items?organization_id=${orgId}&per_page=200&page=${page}`;
+        const response = await fetch(itemsUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Zoho-oauthtoken ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          console.error(`Zoho API fetchItems failed (page ${page}): ${errText}`);
+          break;
+        }
+
+        const data: any = await response.json();
+        if (data.items && data.items.length > 0) {
+          allItems.push(...data.items);
+        }
+
+        hasMore = data.page_context ? data.page_context.has_more_page : false;
+        page++;
       }
 
-      const data: any = await response.json();
-      if (!data.items) {
-        return [];
-      }
-
-      return data.items.map((item: any) => ({
+      return allItems.map((item: any) => ({
         zohoItemId: item.item_id,
         name: item.name,
         rate: item.rate || 0,
@@ -274,27 +303,36 @@ export class ZohoService {
         throw new Error('ZOHO_ORG_ID is missing in .env');
       }
 
-      const searchUrl = `${apiUrl}/items?organization_id=${orgId}&search_text=${encodeURIComponent(searchText)}`;
-      const response = await fetch(searchUrl, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Zoho-oauthtoken ${accessToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
+      let allItems: any[] = [];
+      let page = 1;
+      let hasMore = true;
 
-      if (!response.ok) {
-        const errText = await response.text();
-        console.error(`Zoho API searchItems failed: ${errText}`);
-        return [];
+      while (hasMore && page <= 25) {
+        const searchUrl = `${apiUrl}/items?organization_id=${orgId}&search_text=${encodeURIComponent(searchText)}&per_page=200&page=${page}`;
+        const response = await fetch(searchUrl, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Zoho-oauthtoken ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          const errText = await response.text();
+          console.error(`Zoho API searchItems failed (page ${page}): ${errText}`);
+          break;
+        }
+
+        const data: any = await response.json();
+        if (data.items && data.items.length > 0) {
+          allItems.push(...data.items);
+        }
+
+        hasMore = data.page_context ? data.page_context.has_more_page : false;
+        page++;
       }
 
-      const data: any = await response.json();
-      if (!data.items) {
-        return [];
-      }
-
-      return data.items.map((item: any) => ({
+      return allItems.map((item: any) => ({
         zohoItemId: item.item_id,
         name: item.name,
         rate: item.rate || 0,
