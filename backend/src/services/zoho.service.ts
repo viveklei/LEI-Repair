@@ -52,36 +52,78 @@ export class ZohoService {
       }
 
       let allContacts: any[] = [];
-      let page = 1;
-      let hasMore = true;
+      const trimmedSearch = searchText.trim();
 
-      while (hasMore && page <= 25) { // Fetch up to 5,000 records
-        const searchUrl = `${apiUrl}/contacts?organization_id=${orgId}&search_text=${encodeURIComponent(searchText)}&per_page=200&page=${page}`;
-        const response = await fetch(searchUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Zoho-oauthtoken ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errText = await response.text();
-          console.error(`Zoho API searchContacts failed (page ${page}): ${errText}`);
-          break;
+      if (!trimmedSearch) {
+        // Fetch all contacts across pages when search query is empty
+        let page = 1;
+        let hasMore = true;
+        while (hasMore && page <= 25) {
+          const searchUrl = `${apiUrl}/contacts?organization_id=${orgId}&per_page=200&page=${page}`;
+          const response = await fetch(searchUrl, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Zoho-oauthtoken ${accessToken}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          if (!response.ok) break;
+          const data: any = await response.json();
+          if (data.contacts && data.contacts.length > 0) {
+            allContacts.push(...data.contacts);
+          }
+          hasMore = data.page_context ? data.page_context.has_more_page : false;
+          page++;
         }
+      } else {
+        // Search by company_name_contains, contact_name_contains, and search_text for precise autocomplete matching
+        const encodedSearch = encodeURIComponent(trimmedSearch);
+        let page = 1;
+        let hasMore = true;
 
-        const data: any = await response.json();
-        if (data.contacts && data.contacts.length > 0) {
-          allContacts.push(...data.contacts);
+        while (hasMore && page <= 10) {
+          const byCompanyUrl = `${apiUrl}/contacts?organization_id=${orgId}&company_name_contains=${encodedSearch}&per_page=200&page=${page}`;
+          const byContactUrl = `${apiUrl}/contacts?organization_id=${orgId}&contact_name_contains=${encodedSearch}&per_page=200&page=${page}`;
+          const bySearchUrl = `${apiUrl}/contacts?organization_id=${orgId}&search_text=${encodedSearch}&per_page=200&page=${page}`;
+
+          const [companyRes, contactRes, searchRes] = await Promise.all([
+            fetch(byCompanyUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
+            fetch(byContactUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
+            fetch(bySearchUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
+          ]);
+
+          const companyData: any = companyRes.ok ? await companyRes.json() : { contacts: [] };
+          const contactData: any = contactRes.ok ? await contactRes.json() : { contacts: [] };
+          const searchData: any = searchRes.ok ? await searchRes.json() : { contacts: [] };
+
+          const fetched = [
+            ...(companyData.contacts || []),
+            ...(contactData.contacts || []),
+            ...(searchData.contacts || [])
+          ];
+          allContacts.push(...fetched);
+
+          const companyHasMore = companyData.page_context ? companyData.page_context.has_more_page : false;
+          const contactHasMore = contactData.page_context ? contactData.page_context.has_more_page : false;
+          const searchHasMore = searchData.page_context ? searchData.page_context.has_more_page : false;
+
+          hasMore = companyHasMore || contactHasMore || searchHasMore;
+          page++;
         }
+      }
 
-        hasMore = data.page_context ? data.page_context.has_more_page : false;
-        page++;
+      // Merge & deduplicate by contact_id
+      const seen = new Set<string>();
+      const combined: any[] = [];
+      for (const c of allContacts) {
+        if (!seen.has(c.contact_id)) {
+          seen.add(c.contact_id);
+          combined.push(c);
+        }
       }
 
       // Map Zoho Books contact details to our customer schema
-      return allContacts.map((contact: any) => ({
+      return combined.map((contact: any) => ({
         zohoContactId: contact.contact_id,
         companyName: contact.company_name || contact.contact_name,
         customerName: contact.contact_name,
