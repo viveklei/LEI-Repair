@@ -76,38 +76,42 @@ export class ZohoService {
           page++;
         }
       } else {
-        // Search by company_name_contains, contact_name_contains, and search_text for precise autocomplete matching
-        const encodedSearch = encodeURIComponent(trimmedSearch);
+        // Create case variations (original, UPPERCASE, Titlecase, lowercase) to bypass Zoho API strict case-sensitivity
+        const upper = trimmedSearch.toUpperCase();
+        const lower = trimmedSearch.toLowerCase();
+        const title = trimmedSearch.charAt(0).toUpperCase() + trimmedSearch.slice(1).toLowerCase();
+        const variations = Array.from(new Set([trimmedSearch, upper, title, lower]));
+
         let page = 1;
         let hasMore = true;
 
-        while (hasMore && page <= 10) {
-          const byCompanyUrl = `${apiUrl}/contacts?organization_id=${orgId}&company_name_contains=${encodedSearch}&per_page=200&page=${page}`;
-          const byContactUrl = `${apiUrl}/contacts?organization_id=${orgId}&contact_name_contains=${encodedSearch}&per_page=200&page=${page}`;
-          const bySearchUrl = `${apiUrl}/contacts?organization_id=${orgId}&search_text=${encodedSearch}&per_page=200&page=${page}`;
+        while (hasMore && page <= 5) {
+          const fetchPromises: Promise<Response>[] = [];
+          for (const v of variations) {
+            const encodedVar = encodeURIComponent(v);
+            fetchPromises.push(
+              fetch(`${apiUrl}/contacts?organization_id=${orgId}&company_name_contains=${encodedVar}&per_page=200&page=${page}`, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
+              fetch(`${apiUrl}/contacts?organization_id=${orgId}&contact_name_contains=${encodedVar}&per_page=200&page=${page}`, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
+              fetch(`${apiUrl}/contacts?organization_id=${orgId}&search_text=${encodedVar}&per_page=200&page=${page}`, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } })
+            );
+          }
 
-          const [companyRes, contactRes, searchRes] = await Promise.all([
-            fetch(byCompanyUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
-            fetch(byContactUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
-            fetch(bySearchUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
-          ]);
+          const responses = await Promise.all(fetchPromises);
+          let anyHasMore = false;
 
-          const companyData: any = companyRes.ok ? await companyRes.json() : { contacts: [] };
-          const contactData: any = contactRes.ok ? await contactRes.json() : { contacts: [] };
-          const searchData: any = searchRes.ok ? await searchRes.json() : { contacts: [] };
+          for (const res of responses) {
+            if (res.ok) {
+              const data: any = await res.json();
+              if (data.contacts && data.contacts.length > 0) {
+                allContacts.push(...data.contacts);
+              }
+              if (data.page_context && data.page_context.has_more_page) {
+                anyHasMore = true;
+              }
+            }
+          }
 
-          const fetched = [
-            ...(companyData.contacts || []),
-            ...(contactData.contacts || []),
-            ...(searchData.contacts || [])
-          ];
-          allContacts.push(...fetched);
-
-          const companyHasMore = companyData.page_context ? companyData.page_context.has_more_page : false;
-          const contactHasMore = contactData.page_context ? contactData.page_context.has_more_page : false;
-          const searchHasMore = searchData.page_context ? searchData.page_context.has_more_page : false;
-
-          hasMore = companyHasMore || contactHasMore || searchHasMore;
+          hasMore = anyHasMore;
           page++;
         }
       }
@@ -151,34 +155,42 @@ export class ZohoService {
         throw new Error('ZOHO_ORG_ID is missing in .env');
       }
 
-      const encodedSearch = encodeURIComponent(searchText);
       let allContacts: any[] = [];
+      const trimmedSearch = searchText.trim();
+      const upper = trimmedSearch.toUpperCase();
+      const lower = trimmedSearch.toLowerCase();
+      const title = trimmedSearch.charAt(0).toUpperCase() + trimmedSearch.slice(1).toLowerCase();
+      const variations = Array.from(new Set([trimmedSearch, upper, title, lower]));
+
       let page = 1;
       let hasMore = true;
 
-      while (hasMore && page <= 25) {
-        const byCompanyUrl = `${apiUrl}/contacts?organization_id=${orgId}&contact_type=vendor&company_name_contains=${encodedSearch}&per_page=200&page=${page}`;
-        const byContactUrl = `${apiUrl}/contacts?organization_id=${orgId}&contact_type=vendor&contact_name_contains=${encodedSearch}&per_page=200&page=${page}`;
-
-        const [companyRes, contactRes] = await Promise.all([
-          fetch(byCompanyUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
-          fetch(byContactUrl, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
-        ]);
-
-        if (!companyRes.ok && !contactRes.ok) {
-          break;
+      while (hasMore && page <= 5) {
+        const fetchPromises: Promise<Response>[] = [];
+        for (const v of variations) {
+          const encodedVar = encodeURIComponent(v);
+          fetchPromises.push(
+            fetch(`${apiUrl}/contacts?organization_id=${orgId}&contact_type=vendor&company_name_contains=${encodedVar}&per_page=200&page=${page}`, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
+            fetch(`${apiUrl}/contacts?organization_id=${orgId}&contact_type=vendor&contact_name_contains=${encodedVar}&per_page=200&page=${page}`, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } })
+          );
         }
 
-        const companyData: any = companyRes.ok ? await companyRes.json() : { contacts: [] };
-        const contactData: any = contactRes.ok ? await contactRes.json() : { contacts: [] };
+        const responses = await Promise.all(fetchPromises);
+        let anyHasMore = false;
 
-        const fetched = [...(companyData.contacts || []), ...(contactData.contacts || [])];
-        allContacts.push(...fetched);
+        for (const res of responses) {
+          if (res.ok) {
+            const data: any = await res.json();
+            if (data.contacts && data.contacts.length > 0) {
+              allContacts.push(...data.contacts);
+            }
+            if (data.page_context && data.page_context.has_more_page) {
+              anyHasMore = true;
+            }
+          }
+        }
 
-        const companyHasMore = companyData.page_context ? companyData.page_context.has_more_page : false;
-        const contactHasMore = contactData.page_context ? contactData.page_context.has_more_page : false;
-
-        hasMore = companyHasMore || contactHasMore;
+        hasMore = anyHasMore;
         page++;
       }
 
