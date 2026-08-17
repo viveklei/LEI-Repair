@@ -24,6 +24,7 @@ jobs:
             cd /var/www/LEI-Repair
 
             echo "[1/6] Pulling latest code from GitHub..."
+            git reset --hard HEAD
             git pull origin main
 
             echo "[2/6] Installing backend dependencies..."
