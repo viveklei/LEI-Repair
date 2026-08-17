@@ -79,6 +79,7 @@ const JobsList: React.FC = () => {
   const [zohoResults, setZohoResults] = useState<any[]>([]);
   const [showZohoDropdown, setShowZohoDropdown] = useState(false);
   const [zohoSearchTimeout, setZohoSearchTimeout] = useState<any>(null);
+  const [isSearchingZoho, setIsSearchingZoho] = useState(false);
 
   const handleCompanyNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -89,19 +90,24 @@ const JobsList: React.FC = () => {
     }
 
     if (value.trim().length >= 2) {
+      setIsSearchingZoho(true);
       const timeout = setTimeout(async () => {
         try {
           const res = await api.get(`/zoho/customers?query=${encodeURIComponent(value)}`);
-          setZohoResults(res.data);
+          setZohoResults(Array.isArray(res.data) ? res.data : []);
           setShowZohoDropdown(true);
         } catch (err) {
           console.error('Zoho customer search failed:', err);
+          setZohoResults([]);
+        } finally {
+          setIsSearchingZoho(false);
         }
-      }, 400);
+      }, 300);
       setZohoSearchTimeout(timeout);
     } else {
       setZohoResults([]);
       setShowZohoDropdown(false);
+      setIsSearchingZoho(false);
     }
   };
 
@@ -863,29 +869,38 @@ const JobsList: React.FC = () => {
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-1">1. Customer Information</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="relative">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Company Name *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
+                      <span>Company Name *</span>
+                      {isSearchingZoho && (
+                        <span className="text-[9px] text-blue-600 font-bold animate-pulse flex items-center gap-1">
+                          Searching Zoho Books...
+                        </span>
+                      )}
+                    </label>
                     <input
                       type="text" required
                       value={formData.companyName}
                       onChange={handleCompanyNameChange}
-                      onBlur={() => setTimeout(() => setShowZohoDropdown(false), 200)}
-                      onFocus={() => setShowZohoDropdown(true)}
+                      onBlur={() => setTimeout(() => setShowZohoDropdown(false), 300)}
+                      onFocus={() => { if (zohoResults.length > 0) setShowZohoDropdown(true); }}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
-                      placeholder="Laser Cutting Ltd"
+                      placeholder="e.g. Kovai or Laser"
                     />
                     {showZohoDropdown && zohoResults.length > 0 && (
-                      <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg z-50 max-h-48 overflow-y-auto divide-y divide-slate-100">
+                      <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-2xl z-[999] max-h-56 overflow-y-auto divide-y divide-slate-100">
                         {zohoResults.map((zc: any, idx: number) => (
-                          <button
+                          <div
                             key={idx}
-                            type="button"
-                            onClick={() => handleSelectZohoCustomer(zc)}
-                            className="w-full text-left px-3 py-2 hover:bg-blue-50 transition-colors flex flex-col focus:outline-none cursor-pointer"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              handleSelectZohoCustomer(zc);
+                            }}
+                            className="w-full text-left px-3 py-2.5 hover:bg-blue-50 transition-colors flex flex-col focus:outline-none cursor-pointer"
                           >
                             <span className="text-[11px] font-bold text-slate-900">{zc.companyName}</span>
                             <span className="text-[9px] text-slate-500 mt-0.5">{zc.customerName} | {zc.mobileNumber || zc.email || 'No contact details'}</span>
                             {zc.gstNumber && <span className="text-[9px] font-bold text-blue-600 tracking-wider mt-0.5">GST: {zc.gstNumber}</span>}
-                          </button>
+                          </div>
                         ))}
                       </div>
                     )}
