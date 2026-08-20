@@ -611,10 +611,10 @@ const SpareParts: React.FC = () => {
             <form onSubmit={handleAddPartSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Part Specification / Name *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Part Specification / Name</label>
                   <div className="relative">
                     <input
-                      type="text" required
+                      type="text"
                       value={newPartForm.partName}
                       onChange={handlePartNameChange}
                       placeholder="e.g., QBH output window protective lens"
@@ -685,9 +685,9 @@ const SpareParts: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Manufacturer *</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Manufacturer</label>
                 <input
-                  type="text" required
+                  type="text"
                   value={newPartForm.manufacturer}
                   onChange={e => setNewPartForm({ ...newPartForm, manufacturer: e.target.value })}
                   placeholder="e.g., Raycus / Maxphotonics / IPG"
@@ -697,9 +697,9 @@ const SpareParts: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">In-Stock Quantity *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">In-Stock Quantity</label>
                   <input
-                    type="number" required min="0"
+                    type="number" min="0"
                     value={newPartForm.quantity}
                     onChange={e => setNewPartForm({ ...newPartForm, quantity: e.target.value })}
                     placeholder="10"
@@ -707,9 +707,9 @@ const SpareParts: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Alert level *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Alert level</label>
                   <input
-                    type="number" required min="0"
+                    type="number" min="0"
                     value={newPartForm.stockLevel}
                     onChange={e => setNewPartForm({ ...newPartForm, stockLevel: e.target.value })}
                     placeholder="3"
@@ -719,9 +719,9 @@ const SpareParts: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cost Per Unit (₹) *</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cost Per Unit (₹)</label>
                 <input
-                  type="number" required min="0" step="0.01"
+                  type="number" min="0" step="0.01"
                   value={newPartForm.cost}
                   onChange={e => setNewPartForm({ ...newPartForm, cost: e.target.value })}
                   placeholder="450.00"
@@ -880,18 +880,18 @@ const SpareParts: React.FC = () => {
               {/* Row 1: PO Details */}
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">PO Number *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">PO Number</label>
                   <input
-                    type="text" required
+                    type="text"
                     value={poForm.poNumber}
                     onChange={e => setPoForm({ ...poForm, poNumber: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 font-bold"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">PO Date *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">PO Date</label>
                   <input
-                    type="text" required
+                    type="text"
                     value={poForm.poDate}
                     onChange={e => setPoForm({ ...poForm, poDate: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -908,7 +908,7 @@ const SpareParts: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Place of Supply *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Place of Supply</label>
                   <select
                     value={poForm.placeOfSupply}
                     onChange={e => setPoForm({ ...poForm, placeOfSupply: e.target.value })}
@@ -927,9 +927,9 @@ const SpareParts: React.FC = () => {
               {/* Row 2: Vendor Details */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="relative">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Vendor Name *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Vendor Name</label>
                   <input
-                    type="text" required
+                    type="text"
                     value={poForm.vendorName}
                     onChange={handleVendorNameChange}
                     onBlur={() => setTimeout(() => setShowZohoVendorsDropdown(false), 200)}
@@ -955,9 +955,9 @@ const SpareParts: React.FC = () => {
                   )}
                 </div>
                 <div className="md:col-span-2">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Vendor Address *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Vendor Address</label>
                   <textarea
-                    rows={2} required
+                    rows={2}
                     value={poForm.vendorAddress}
                     onChange={e => setPoForm({ ...poForm, vendorAddress: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -1003,7 +1003,7 @@ const SpareParts: React.FC = () => {
                       <div className="flex-1 grid grid-cols-1 md:grid-cols-4 gap-2">
                         <div className="md:col-span-2">
                           <input
-                            type="text" required
+                            type="text"
                             placeholder="Item Name / Specification"
                             value={item.name}
                             onChange={e => {
@@ -1028,7 +1028,7 @@ const SpareParts: React.FC = () => {
                         <div>
                           <label className="text-[9px] text-slate-400 font-bold">Qty</label>
                           <input
-                            type="number" required min="1"
+                            type="number" min="1"
                             value={item.qty}
                             onChange={e => {
                               const list = [...poForm.items];
@@ -1041,7 +1041,7 @@ const SpareParts: React.FC = () => {
                         <div>
                           <label className="text-[9px] text-slate-400 font-bold">Rate</label>
                           <input
-                            type="number" required min="0" step="any"
+                            type="number" min="0" step="any"
                             value={item.rate}
                             onChange={e => {
                               const list = [...poForm.items];
@@ -1110,9 +1110,9 @@ const SpareParts: React.FC = () => {
             <form onSubmit={handleEditPartSubmit} className="p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Part Specification / Name *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Part Specification / Name</label>
                   <input
-                    type="text" required
+                    type="text"
                     value={editPartForm.partName}
                     onChange={e => setEditPartForm({ ...editPartForm, partName: e.target.value })}
                     placeholder="e.g., QBH output window protective lens"
@@ -1155,9 +1155,9 @@ const SpareParts: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Manufacturer *</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Manufacturer</label>
                 <input
-                  type="text" required
+                  type="text"
                   value={editPartForm.manufacturer}
                   onChange={e => setEditPartForm({ ...editPartForm, manufacturer: e.target.value })}
                   placeholder="e.g., Raycus / Maxphotonics / IPG"
@@ -1167,9 +1167,9 @@ const SpareParts: React.FC = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">In-Stock Quantity *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">In-Stock Quantity</label>
                   <input
-                    type="number" required min="0"
+                    type="number" min="0"
                     value={editPartForm.quantity}
                     onChange={e => setEditPartForm({ ...editPartForm, quantity: e.target.value })}
                     placeholder="10"
@@ -1177,9 +1177,9 @@ const SpareParts: React.FC = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Alert level *</label>
+                  <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Min Alert level</label>
                   <input
-                    type="number" required min="0"
+                    type="number" min="0"
                     value={editPartForm.stockLevel}
                     onChange={e => setEditPartForm({ ...editPartForm, stockLevel: e.target.value })}
                     placeholder="3"
@@ -1189,9 +1189,9 @@ const SpareParts: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cost Per Unit (₹) *</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Cost Per Unit (₹)</label>
                 <input
-                  type="number" required min="0" step="0.01"
+                  type="number" min="0" step="0.01"
                   value={editPartForm.cost}
                   onChange={e => setEditPartForm({ ...editPartForm, cost: e.target.value })}
                   placeholder="450.00"

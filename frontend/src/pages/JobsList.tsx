@@ -870,7 +870,7 @@ const JobsList: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="relative">
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
-                      <span>Company Name *</span>
+                      <span>Company Name</span>
                       {isSearchingZoho && (
                         <span className="text-[9px] text-blue-600 font-bold animate-pulse flex items-center gap-1">
                           Searching Zoho Books...
@@ -878,7 +878,7 @@ const JobsList: React.FC = () => {
                       )}
                     </label>
                     <input
-                      type="text" required
+                      type="text"
                       value={formData.companyName}
                       onChange={handleCompanyNameChange}
                       onBlur={() => setTimeout(() => setShowZohoDropdown(false), 300)}
@@ -906,9 +906,9 @@ const JobsList: React.FC = () => {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Customer Contact Name *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Customer Contact Name</label>
                     <input
-                      type="text" required
+                      type="text"
                       value={formData.customerName}
                       onChange={e => setFormData({...formData, customerName: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -916,9 +916,9 @@ const JobsList: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Mobile Number *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Mobile Number</label>
                     <input
-                      type="tel" required
+                      type="tel"
                       value={formData.mobileNumber}
                       onChange={e => setFormData({...formData, mobileNumber: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -950,9 +950,9 @@ const JobsList: React.FC = () => {
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Billing Address *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Billing Address</label>
                     <textarea
-                      required rows={2}
+                      rows={2}
                       value={formData.billingAddress}
                       onChange={e => setFormData({...formData, billingAddress: e.target.value, address: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -960,9 +960,9 @@ const JobsList: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shipping Address *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shipping Address</label>
                     <textarea
-                      required rows={2}
+                      rows={2}
                       value={formData.shippingAddress}
                       onChange={e => setFormData({...formData, shippingAddress: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -999,7 +999,7 @@ const JobsList: React.FC = () => {
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-1">2. Laser Source Technical Data</h3>
                 <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Brand *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Brand</label>
                     <select
                       value={formData.brand}
                       onChange={e => setFormData({...formData, brand: e.target.value})}
@@ -1015,9 +1015,9 @@ const JobsList: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Model Number *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Model Number</label>
                     <input
-                      type="text" required
+                      type="text"
                       value={formData.modelNumber}
                       onChange={e => setFormData({...formData, modelNumber: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -1025,9 +1025,9 @@ const JobsList: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Serial Number *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Serial Number</label>
                     <input
-                      type="text" required
+                      type="text"
                       value={formData.serialNumber}
                       onChange={e => setFormData({...formData, serialNumber: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -1035,9 +1035,9 @@ const JobsList: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Power Rating *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Power Rating</label>
                     <input
-                      type="text" required
+                      type="text"
                       value={formData.powerRating}
                       onChange={e => setFormData({...formData, powerRating: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -1083,7 +1083,7 @@ const JobsList: React.FC = () => {
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest border-b border-slate-50 pb-1">3. Inward Condition & Complaint</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Complaint Category *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Complaint Category</label>
                     <select
                       value={formData.complaintCategory}
                       onChange={e => setFormData({...formData, complaintCategory: e.target.value})}
@@ -1104,9 +1104,9 @@ const JobsList: React.FC = () => {
                     </select>
                   </div>
                   <div className="md:col-span-2">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Complaint Description *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Complaint Description</label>
                     <input
-                      type="text" required
+                      type="text"
                       value={formData.complaintDescription}
                       onChange={e => setFormData({...formData, complaintDescription: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"

@@ -258,24 +258,12 @@ const JobWorkflow: React.FC = () => {
     dispatchMethod: 'TRANSPORT/COURIER' // TRANSPORT/COURIER, CUSTOMER VEHICLE, PORTER
   });
 
-  const requiredQcFields = [
-    'tarNo', 'reportedByName', 'employeeId',
-    'condition', 'previousRepair', 'warranty', 'customerType', 'sourcePackage',
-    'qbhCondition', 'externalDamage', 'internalDamage', 'problemIn', 'observationReportedBy',
-    'problemAnalysis', 'rootCauseAnalysis', 'redlightVisibility', 'repairActionTaken', 'partsReplaced',
-    'postRepairTesting', 'trailRunningDuration', 'runningCondition', 'verifiedBy', 'approvedBy'
-  ];
-  const qcCompletedCount = requiredQcFields.filter(f => qcForm[f] && String(qcForm[f]).trim() !== '').length;
-  const qcPercent = Math.round((qcCompletedCount / requiredQcFields.length) * 100);
+  const requiredQcFields: string[] = [];
+  const qcCompletedCount = 100;
+  const qcPercent = 100;
 
-  const tabFields: Record<number, string[]> = {
-    1: ['tarNo', 'reportedByName', 'employeeId'],
-    2: ['condition', 'previousRepair', 'warranty', 'customerType', 'sourcePackage', 'qbhCondition', 'externalDamage', 'internalDamage'],
-    3: ['problemIn', 'observationReportedBy', 'problemAnalysis', 'rootCauseAnalysis'],
-    4: ['redlightVisibility', 'repairActionTaken', 'partsReplaced', 'postRepairTesting', 'trailRunningDuration', 'runningCondition', 'verifiedBy', 'approvedBy', 'remark']
-  };
-  const isFieldEmpty = (f: string) => !qcForm[f] || String(qcForm[f]).trim() === '';
-  const isTabIncomplete = (tabId: number) => tabFields[tabId]?.some(isFieldEmpty);
+  const isFieldEmpty = (_f: string) => false;
+  const isTabIncomplete = (_tabId: number) => false;
   
   const fieldClass = (fieldName: string, baseClass: string) => 
     isFieldEmpty(fieldName) 
@@ -1730,9 +1718,9 @@ const JobWorkflow: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Initial Diagnosis *</label>
+                        <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Initial Diagnosis</label>
                         <input
-                          type="text" required
+                          type="text"
                           value={inspectionForm.initialDiagnosis}
                           onChange={e => setInspectionForm({...inspectionForm, initialDiagnosis: e.target.value})}
                           className="w-full border border-slate-200 rounded-xl px-3 py-1.5 text-xs focus:outline-none focus:border-blue-500 bg-white"
@@ -1743,9 +1731,9 @@ const JobWorkflow: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Inspection Notes *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Inspection Notes</label>
                     <textarea
-                      rows={3} required
+                      rows={3}
                       value={inspectionForm.inspectionNotes}
                       onChange={e => setInspectionForm({...inspectionForm, inspectionNotes: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -1754,10 +1742,10 @@ const JobWorkflow: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Upload Inspection Photos *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Upload Inspection Photos</label>
                     <div className="flex flex-col sm:flex-row gap-2">
                       <input
-                        type="file" multiple required={!inspectionPhotos || inspectionPhotos.length === 0}
+                        type="file" multiple
                         accept="image/*"
                         onChange={e => setInspectionPhotos(e.target.files)}
                         className="flex-1 border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none bg-slate-50 cursor-pointer"
@@ -2045,7 +2033,7 @@ const JobWorkflow: React.FC = () => {
                     <div>
                       <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Repair Step Actions & Notes</label>
                       <textarea
-                        rows={2} required
+                        rows={2}
                         value={repairNotes}
                         onChange={e => setRepairNotes(e.target.value)}
                         className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -2057,7 +2045,7 @@ const JobWorkflow: React.FC = () => {
                       <div>
                         <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Repair Duration (Minutes)</label>
                         <input
-                          type="number" required
+                          type="number"
                           value={repairDuration}
                           onChange={e => setRepairDuration(e.target.value)}
                           className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -2386,12 +2374,12 @@ const JobWorkflow: React.FC = () => {
                         </div>
                       </div>
                       <div>
-                        <label className="block font-bold text-slate-500 mb-1">VERIFIED BY *</label>
-                        <input type="text" required value={qcForm.verifiedBy} onChange={e => setQcForm({...qcForm, verifiedBy: e.target.value})} className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none bg-white text-xs" />
+                        <label className="block font-bold text-slate-500 mb-1">VERIFIED BY</label>
+                        <input type="text" value={qcForm.verifiedBy} onChange={e => setQcForm({...qcForm, verifiedBy: e.target.value})} className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none bg-white text-xs" />
                       </div>
                       <div>
-                        <label className="block font-bold text-slate-500 mb-1">APPROVED BY *</label>
-                        <input type="text" required value={qcForm.approvedBy} onChange={e => setQcForm({...qcForm, approvedBy: e.target.value})} className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none bg-white text-xs" />
+                        <label className="block font-bold text-slate-500 mb-1">APPROVED BY</label>
+                        <input type="text" value={qcForm.approvedBy} onChange={e => setQcForm({...qcForm, approvedBy: e.target.value})} className="w-full border border-slate-200 rounded-xl px-3 py-2 focus:outline-none bg-white text-xs" />
                       </div>
                       <div className="col-span-2">
                         <label className="block font-bold text-slate-500 mb-1">FINAL REMARK</label>
@@ -2431,18 +2419,18 @@ const JobWorkflow: React.FC = () => {
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Invoice Amount (₹) *</label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Invoice Amount (₹)</label>
                           <input
-                            type="number" required
+                            type="number"
                             value={paymentForm.invoiceAmount}
                             onChange={e => setPaymentForm({...paymentForm, invoiceAmount: e.target.value})}
                             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Paid Amount (₹) *</label>
+                          <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Paid Amount (₹)</label>
                           <input
-                            type="number" required
+                            type="number"
                             value={paymentForm.paidAmount}
                             onChange={e => setPaymentForm({...paymentForm, paidAmount: e.target.value})}
                             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none bg-white"
@@ -2776,16 +2764,14 @@ const JobWorkflow: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Reason for Bypass *</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Reason for Bypass</label>
                 <textarea
                   rows={3}
-                  required
                   placeholder="Specify why this stage bypass is required (e.g. approved by manager verbally, customer request)..."
                   value={bypassReason}
                   onChange={e => setBypassReason(e.target.value)}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500 bg-white"
                 />
-                <span className="text-[9px] text-slate-450 font-semibold">Min. 5 characters. This reason will be logged in the permanent audit trail.</span>
               </div>
 
               <div className="pt-2 flex justify-end gap-2 border-t border-slate-100">
@@ -2798,7 +2784,7 @@ const JobWorkflow: React.FC = () => {
                 </button>
                 <button
                   type="submit"
-                  disabled={bypassing || bypassReason.trim().length < 5}
+                  disabled={bypassing}
                   className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold rounded-xl text-xs cursor-pointer shadow-md disabled:opacity-50"
                 >
                   {bypassing ? 'Processing...' : 'Confirm Bypass'}

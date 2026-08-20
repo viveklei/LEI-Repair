@@ -358,7 +358,7 @@ const Customers: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="relative">
                     <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 flex items-center justify-between">
-                      <span>Company Name *</span>
+                      <span>Company Name</span>
                       {isSearchingZoho && (
                         <span className="text-[9px] text-blue-600 font-bold animate-pulse flex items-center gap-1">
                           Searching Zoho Books...
@@ -366,7 +366,7 @@ const Customers: React.FC = () => {
                       )}
                     </label>
                     <input
-                      type="text" required
+                      type="text"
                       value={newCustomerForm.companyName}
                       onChange={handleCompanyNameChange}
                       onBlur={() => setTimeout(() => setShowZohoDropdown(false), 300)}
@@ -394,9 +394,9 @@ const Customers: React.FC = () => {
                     )}
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Customer Contact Name *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Customer Contact Name</label>
                     <input
-                      type="text" required
+                      type="text"
                       value={newCustomerForm.customerName}
                       onChange={e => setNewCustomerForm({...newCustomerForm, customerName: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -407,9 +407,9 @@ const Customers: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Mobile Number *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Mobile Number</label>
                     <input
-                      type="tel" required
+                      type="tel"
                       value={newCustomerForm.mobileNumber}
                       onChange={e => setNewCustomerForm({...newCustomerForm, mobileNumber: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -440,9 +440,9 @@ const Customers: React.FC = () => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Billing Address *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Billing Address</label>
                     <textarea
-                      required rows={2}
+                      rows={2}
                       value={newCustomerForm.billingAddress}
                       onChange={e => setNewCustomerForm({...newCustomerForm, billingAddress: e.target.value, address: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"
@@ -450,9 +450,9 @@ const Customers: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shipping Address *</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Shipping Address</label>
                     <textarea
-                      required rows={2}
+                      rows={2}
                       value={newCustomerForm.shippingAddress}
                       onChange={e => setNewCustomerForm({...newCustomerForm, shippingAddress: e.target.value})}
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-blue-500"

@@ -729,21 +729,33 @@ export class ApiController {
 
       if (!req.user) return res.status(401).json({ message: 'Unauthorized' });
 
+      const safeCompanyName = (companyName || '').trim() || 'General Customer';
+      const safeCustomerName = (customerName || '').trim() || 'Valued Customer';
+      const safeMobileNumber = (mobileNumber || '').trim() || 'N/A';
+      const safeBrand = (brand || '').trim() || 'Raycus';
+      const safeModelNumber = (modelNumber || '').trim() || 'Standard Model';
+      const safeSerialNumber = (serialNumber || '').trim() || `SN-${Date.now().toString().slice(-6)}`;
+      const safePowerRating = (powerRating || '').trim() || 'Standard';
+      const safeComplaintCategory = (complaintCategory || '').trim() || 'General Inspection';
+      const safeComplaintDescription = (complaintDescription || '').trim() || 'Customer requested inward service.';
+
       // Step 1: Manage/Create Customer
       let finalCustomerId = customerId;
       if (!finalCustomerId) {
-        const existingCust = await prisma.customer.findFirst({
-          where: { mobileNumber, isDeleted: false }
-        });
+        let existingCust = null;
+        if (safeMobileNumber !== 'N/A') {
+          existingCust = await prisma.customer.findFirst({
+            where: { mobileNumber: safeMobileNumber, isDeleted: false }
+          });
+        }
         if (existingCust) {
           finalCustomerId = existingCust.id;
-          // Update customer details (like email, name) if they were entered differently or added
           await prisma.customer.update({
             where: { id: existingCust.id },
             data: {
               email: email || existingCust.email,
-              customerName: customerName || existingCust.customerName,
-              companyName: companyName || existingCust.companyName,
+              customerName: safeCustomerName || existingCust.customerName,
+              companyName: safeCompanyName || existingCust.companyName,
               address: address || billingAddress || existingCust.address || '',
               billingAddress: billingAddress || existingCust.billingAddress || '',
               shippingAddress: shippingAddress || existingCust.shippingAddress || '',
@@ -756,23 +768,22 @@ export class ApiController {
         } else {
           const newCust = await prisma.customer.create({
             data: { 
-              companyName, 
-              customerName, 
-              mobileNumber, 
-              email, 
+              companyName: safeCompanyName, 
+              customerName: safeCustomerName, 
+              mobileNumber: safeMobileNumber, 
+              email: email || '', 
               address: address || billingAddress || '', 
               billingAddress: billingAddress || address || '',
               shippingAddress: shippingAddress || address || '',
               billingState: billingState || '',
               shippingState: shippingState || '',
-              gstNumber, 
-              contactPerson 
+              gstNumber: gstNumber || '', 
+              contactPerson: contactPerson || safeCustomerName 
             }
           });
           finalCustomerId = newCust.id;
         }
       } else {
-        // If a customerId was explicitly passed, verify and update email/details if provided
         await prisma.customer.update({
           where: { id: finalCustomerId },
           data: {
@@ -785,19 +796,19 @@ export class ApiController {
 
       // Step 2: Manage/Create Laser Source
       let laser = await prisma.laserSource.findFirst({
-        where: { serialNumber, isDeleted: false }
+        where: { serialNumber: safeSerialNumber, isDeleted: false }
       });
       if (!laser) {
         laser = await prisma.laserSource.create({
           data: {
-            brand,
-            modelNumber,
-            serialNumber,
-            powerRating,
+            brand: safeBrand,
+            modelNumber: safeModelNumber,
+            serialNumber: safeSerialNumber,
+            powerRating: safePowerRating,
             mfgYear: parseInt(mfgYear) || new Date().getFullYear(),
-            machineManufacturer,
-            machineModel,
-            sourceType
+            machineManufacturer: machineManufacturer || 'Standard',
+            machineModel: machineModel || 'Standard',
+            sourceType: sourceType || 'Single Module'
           }
         });
       }
@@ -814,9 +825,9 @@ export class ApiController {
           trackId,
           customerId: finalCustomerId,
           laserSourceId: laser.id,
-          complaintCategory,
-          complaintDescription,
-          receivingNotes,
+          complaintCategory: safeComplaintCategory,
+          complaintDescription: safeComplaintDescription,
+          receivingNotes: receivingNotes || '',
           status: 'RECEIVED'
         },
         include: { customer: true, laserSource: true }
