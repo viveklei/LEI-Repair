@@ -29,10 +29,10 @@ router.post('/customers', authenticateJWT, requireRoles(['SUPPORT', 'ADMIN']), A
 router.delete('/customers/:id', authenticateJWT, requireRoles(['ADMIN']), ApiController.deleteCustomer);
 router.get('/zoho/customers', authenticateJWT, requireRoles(['SUPPORT', 'ACCOUNTS', 'ADMIN', 'COORDINATOR', 'ENGINEER']), ApiController.searchZohoCustomers);
 router.get('/zoho/customers/:id', authenticateJWT, requireRoles(['SUPPORT', 'ACCOUNTS', 'ADMIN', 'COORDINATOR', 'ENGINEER']), ApiController.getZohoCustomerDetails);
-router.get('/zoho/vendors', authenticateJWT, requireRoles(['SUPPORT', 'ACCOUNTS', 'ADMIN', 'ENGINEER']), ApiController.searchZohoVendors);
-router.get('/zoho/vendors/:id', authenticateJWT, requireRoles(['SUPPORT', 'ACCOUNTS', 'ADMIN', 'ENGINEER']), ApiController.getZohoVendorDetails);
-router.post('/zoho/spares/sync', authenticateJWT, requireRoles(['ADMIN', 'ACCOUNTS']), ApiController.syncZohoSpares);
-router.get('/zoho/items', authenticateJWT, requireRoles(['ADMIN', 'ACCOUNTS', 'SUPPORT']), ApiController.searchZohoItems);
+router.get('/zoho/vendors', authenticateJWT, requireRoles(['SUPPORT', 'ACCOUNTS', 'ADMIN', 'COORDINATOR', 'ENGINEER']), ApiController.searchZohoVendors);
+router.get('/zoho/vendors/:id', authenticateJWT, requireRoles(['SUPPORT', 'ACCOUNTS', 'ADMIN', 'COORDINATOR', 'ENGINEER']), ApiController.getZohoVendorDetails);
+router.post('/zoho/spares/sync', authenticateJWT, requireRoles(['SUPPORT', 'ACCOUNTS', 'ADMIN', 'COORDINATOR', 'ENGINEER']), ApiController.syncZohoSpares);
+router.get('/zoho/items', authenticateJWT, requireRoles(['SUPPORT', 'ACCOUNTS', 'ADMIN', 'COORDINATOR', 'ENGINEER']), ApiController.searchZohoItems);
 
 // --- SERVICE JOBS ---
 router.get('/jobs', authenticateJWT, ApiController.listJobs);

@@ -357,36 +357,60 @@ export class ZohoService {
         throw new Error('ZOHO_ORG_ID is missing in .env');
       }
 
+      const trimmedSearch = searchText.trim();
+      if (!trimmedSearch) {
+        return this.fetchItems();
+      }
+
       let allItems: any[] = [];
+      const upper = trimmedSearch.toUpperCase();
+      const lower = trimmedSearch.toLowerCase();
+      const title = trimmedSearch.charAt(0).toUpperCase() + trimmedSearch.slice(1).toLowerCase();
+      const variations = Array.from(new Set([trimmedSearch, upper, title, lower]));
+
       let page = 1;
       let hasMore = true;
 
-      while (hasMore && page <= 25) {
-        const searchUrl = `${apiUrl}/items?organization_id=${orgId}&search_text=${encodeURIComponent(searchText)}&per_page=200&page=${page}`;
-        const response = await fetch(searchUrl, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Zoho-oauthtoken ${accessToken}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          const errText = await response.text();
-          console.error(`Zoho API searchItems failed (page ${page}): ${errText}`);
-          break;
+      while (hasMore && page <= 5) {
+        const fetchPromises: Promise<Response>[] = [];
+        for (const v of variations) {
+          const encodedVar = encodeURIComponent(v);
+          fetchPromises.push(
+            fetch(`${apiUrl}/items?organization_id=${orgId}&name_contains=${encodedVar}&per_page=200&page=${page}`, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } }),
+            fetch(`${apiUrl}/items?organization_id=${orgId}&sku_contains=${encodedVar}&per_page=200&page=${page}`, { headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' } })
+          );
         }
 
-        const data: any = await response.json();
-        if (data.items && data.items.length > 0) {
-          allItems.push(...data.items);
+        const responses = await Promise.all(fetchPromises);
+        let anyHasMore = false;
+
+        for (const res of responses) {
+          if (res.ok) {
+            const data: any = await res.json();
+            if (data.items && data.items.length > 0) {
+              allItems.push(...data.items);
+            }
+            if (data.page_context && data.page_context.has_more_page) {
+              anyHasMore = true;
+            }
+          }
         }
 
-        hasMore = data.page_context ? data.page_context.has_more_page : false;
+        hasMore = anyHasMore;
         page++;
       }
 
-      return allItems.map((item: any) => ({
+      // Merge & deduplicate by item_id
+      const seen = new Set<string>();
+      const combined: any[] = [];
+      for (const item of allItems) {
+        if (!seen.has(item.item_id)) {
+          seen.add(item.item_id);
+          combined.push(item);
+        }
+      }
+
+      return combined.map((item: any) => ({
         zohoItemId: item.item_id,
         name: item.name,
         rate: item.rate || 0,
