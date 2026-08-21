@@ -661,6 +661,11 @@ export class ApiController {
             contactPerson 
           }
         });
+
+        // Asynchronously sync new customer to Zoho Books so it's instantly available in Zoho
+        ZohoService.createContact(req.body).catch(err => {
+          console.warn('Async Zoho contact creation warning:', err);
+        });
       }
       res.json(customer);
     } catch (e: any) {

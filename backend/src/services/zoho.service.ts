@@ -359,6 +359,60 @@ export class ZohoService {
     }
   }
 
+  public static async createContact(customerData: any): Promise<any> {
+    try {
+      const accessToken = await this.getAccessToken();
+      const orgId = process.env.ZOHO_ORG_ID;
+      const apiUrl = process.env.ZOHO_BOOKS_API_URL || 'https://www.zohoapis.com/books/v3';
+      if (!orgId) return null;
+
+      const payload = {
+        contact_name: customerData.customerName || customerData.companyName,
+        company_name: customerData.companyName,
+        phone: customerData.mobileNumber || '',
+        mobile: customerData.mobileNumber || '',
+        email: customerData.email || '',
+        gst_no: customerData.gstNumber || '',
+        gst_treatment: customerData.gstNumber ? 'business_gst' : 'consumer',
+        billing_address: {
+          address: customerData.billingAddress || customerData.address || '',
+          state: customerData.billingState || ''
+        },
+        shipping_address: {
+          address: customerData.shippingAddress || customerData.address || '',
+          state: customerData.shippingState || ''
+        }
+      };
+
+      const res = await fetch(`${apiUrl}/contacts?organization_id=${orgId}`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Zoho-oauthtoken ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        const err = await res.text();
+        console.warn('[ZohoService] Failed to create contact in Zoho Books:', err);
+        return null;
+      }
+
+      const data: any = await res.json();
+      if (data.contact) {
+        console.log(`[ZohoService] Created contact "${data.contact.company_name}" in Zoho Books (ID: ${data.contact.contact_id})`);
+        // Refresh cache asynchronously
+        this.refreshCacheIfNeeded(true);
+        return data.contact;
+      }
+      return null;
+    } catch (err: any) {
+      console.error('[ZohoService] createContact error:', err.message);
+      return null;
+    }
+  }
+
   public static async fetchItems(): Promise<any[]> {
     try {
       const accessToken = await this.getAccessToken();
