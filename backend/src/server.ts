@@ -17,13 +17,20 @@ dotenv.config();
 
 // Ensure SQLite database and directory permissions are fully read-writable on startup
 try {
-  const dbDir = path.join(__dirname, '..', 'prisma');
+  const dbPath = process.env.DATABASE_URL ? process.env.DATABASE_URL.replace('file:', '') : path.join(__dirname, '..', 'prisma', 'dev.db');
+  const dbDir = path.dirname(dbPath);
   if (fs.existsSync(dbDir)) {
     fs.chmodSync(dbDir, 0o777);
-    const dbFile = path.join(dbDir, 'dev.db');
-    if (fs.existsSync(dbFile)) {
-      fs.chmodSync(dbFile, 0o777);
-    }
+  }
+  if (fs.existsSync(dbPath)) {
+    fs.chmodSync(dbPath, 0o777);
+  }
+  // Also check default prisma folder
+  const fallbackDir = path.join(__dirname, '..', 'prisma');
+  if (fs.existsSync(fallbackDir)) {
+    fs.chmodSync(fallbackDir, 0o777);
+    const fallbackDb = path.join(fallbackDir, 'dev.db');
+    if (fs.existsSync(fallbackDb)) fs.chmodSync(fallbackDb, 0o777);
   }
 } catch (e: any) {
   console.warn('Could not set DB permissions on startup:', e.message);
