@@ -11,7 +11,23 @@ import helmet from 'helmet';
 import compression from 'compression';
 import rateLimit from 'express-rate-limit';
 
+import fs from 'fs';
+
 dotenv.config();
+
+// Ensure SQLite database and directory permissions are fully read-writable on startup
+try {
+  const dbDir = path.join(__dirname, '..', 'prisma');
+  if (fs.existsSync(dbDir)) {
+    fs.chmodSync(dbDir, 0o777);
+    const dbFile = path.join(dbDir, 'dev.db');
+    if (fs.existsSync(dbFile)) {
+      fs.chmodSync(dbFile, 0o777);
+    }
+  }
+} catch (e: any) {
+  console.warn('Could not set DB permissions on startup:', e.message);
+}
 
 const app = express();
 const server = http.createServer(app);
