@@ -41,42 +41,105 @@ export class ZohoService {
     return this.accessToken!;
   }
 
-  public static async searchContacts(searchText: string): Promise<any[]> {
+  private static cachedContacts: any[] = [];
+  private static cachedVendors: any[] = [];
+  private static cachedItems: any[] = [];
+  private static lastCacheTime: number = 0;
+  private static isSyncingCache: boolean = false;
+
+  /** Pre-fetch and cache all contacts, vendors, and items in background */
+  public static async refreshCacheIfNeeded(force: boolean = false): Promise<void> {
+    const now = Date.now();
+    if (!force && this.lastCacheTime > 0 && (now - this.lastCacheTime < 300000)) {
+      return; // Cache valid for 5 minutes
+    }
+    if (this.isSyncingCache) return;
+
+    this.isSyncingCache = true;
     try {
       const accessToken = await this.getAccessToken();
       const orgId = process.env.ZOHO_ORG_ID;
       const apiUrl = process.env.ZOHO_BOOKS_API_URL || 'https://www.zohoapis.com/books/v3';
+      if (!orgId) return;
 
-      if (!orgId) {
-        throw new Error('ZOHO_ORG_ID is missing in .env');
+      // 1. Fetch Contacts
+      let contacts: any[] = [];
+      let page = 1;
+      let hasMore = true;
+      while (hasMore && page <= 10) {
+        const res = await fetch(`${apiUrl}/contacts?organization_id=${orgId}&per_page=200&page=${page}`, {
+          headers: { 'Authorization': `Zoho-oauthtoken ${accessToken}`, 'Content-Type': 'application/json' }
+        });
+        if (!res.ok) break;
+        const data: any = await res.json();
+        if (data.contacts && data.contacts.length > 0) contacts.push(...data.contacts);
+        hasMore = data.page_context ? data.page_context.has_more_page : false;
+        page++;
       }
+
+      // Filter customers and vendors
+      this.cachedContacts = contacts.filter((c: any) => c.contact_type === 'customer' || c.contact_type === 'all' || !c.contact_type).map((c: any) => ({
+        zohoContactId: c.contact_id,
+        companyName: c.company_name || c.contact_name,
+        customerName: c.contact_name,
+        email: c.email || '',
+        mobileNumber: c.mobile || c.phone || '',
+        gstTreatment: c.gst_treatment || '',
+        gstNumber: c.gst_no || '',
+        address: c.billing_address ? `${c.billing_address.address || ''} ${c.billing_address.city || ''} ${c.billing_address.state || ''} ${c.billing_address.zip || ''}`.trim() : ''
+      }));
+
+      this.cachedVendors = contacts.filter((c: any) => c.contact_type === 'vendor' || c.contact_type === 'all').map((c: any) => ({
+        zohoContactId: c.contact_id,
+        companyName: c.company_name || c.contact_name,
+        customerName: c.contact_name,
+        email: c.email || '',
+        mobileNumber: c.mobile || c.phone || '',
+        gstTreatment: c.gst_treatment || '',
+        gstNumber: c.gst_no || '',
+        address: c.billing_address ? `${c.billing_address.address || ''} ${c.billing_address.city || ''} ${c.billing_address.state || ''} ${c.billing_address.zip || ''}`.trim() : ''
+      }));
+
+      this.lastCacheTime = Date.now();
+      console.log(`[ZohoService] Cache refreshed successfully: ${this.cachedContacts.length} customers, ${this.cachedVendors.length} vendors.`);
+    } catch (err: any) {
+      console.error('[ZohoService] Error refreshing cache:', err.message);
+    } finally {
+      this.isSyncingCache = false;
+    }
+  }
+
+  public static async searchContacts(searchText: string): Promise<any[]> {
+    try {
+      // Trigger background cache refresh
+      this.refreshCacheIfNeeded();
+
+      const query = searchText.trim().toLowerCase();
+      if (!query) {
+        if (this.cachedContacts.length > 0) return this.cachedContacts;
+      }
+
+      // Fast in-memory search across cache
+      const cachedMatches = this.cachedContacts.filter(c =>
+        c.companyName.toLowerCase().includes(query) ||
+        c.customerName.toLowerCase().includes(query) ||
+        c.mobileNumber.toLowerCase().includes(query) ||
+        c.email.toLowerCase().includes(query) ||
+        c.gstNumber.toLowerCase().includes(query) ||
+        c.address.toLowerCase().includes(query)
+      );
+
+      // Perform live Zoho API query to ensure 100% complete results
+      const accessToken = await this.getAccessToken();
+      const orgId = process.env.ZOHO_ORG_ID;
+      const apiUrl = process.env.ZOHO_BOOKS_API_URL || 'https://www.zohoapis.com/books/v3';
+
+      if (!orgId) return cachedMatches;
 
       let allContacts: any[] = [];
       const trimmedSearch = searchText.trim();
 
-      if (!trimmedSearch) {
-        // Fetch all contacts across pages when search query is empty
-        let page = 1;
-        let hasMore = true;
-        while (hasMore && page <= 25) {
-          const searchUrl = `${apiUrl}/contacts?organization_id=${orgId}&per_page=200&page=${page}`;
-          const response = await fetch(searchUrl, {
-            method: 'GET',
-            headers: {
-              'Authorization': `Zoho-oauthtoken ${accessToken}`,
-              'Content-Type': 'application/json',
-            },
-          });
-          if (!response.ok) break;
-          const data: any = await response.json();
-          if (data.contacts && data.contacts.length > 0) {
-            allContacts.push(...data.contacts);
-          }
-          hasMore = data.page_context ? data.page_context.has_more_page : false;
-          page++;
-        }
-      } else {
-        // Create case variations (original, UPPERCASE, Titlecase, lowercase) to bypass Zoho API strict case-sensitivity
+      if (trimmedSearch) {
         const upper = trimmedSearch.toUpperCase();
         const lower = trimmedSearch.toLowerCase();
         const title = trimmedSearch.charAt(0).toUpperCase() + trimmedSearch.slice(1).toLowerCase();
@@ -85,7 +148,7 @@ export class ZohoService {
         let page = 1;
         let hasMore = true;
 
-        while (hasMore && page <= 5) {
+        while (hasMore && page <= 3) {
           const fetchPromises: Promise<Response>[] = [];
           for (const v of variations) {
             const encodedVar = encodeURIComponent(v);
@@ -116,18 +179,8 @@ export class ZohoService {
         }
       }
 
-      // Merge & deduplicate by contact_id
-      const seen = new Set<string>();
-      const combined: any[] = [];
-      for (const c of allContacts) {
-        if (!seen.has(c.contact_id)) {
-          seen.add(c.contact_id);
-          combined.push(c);
-        }
-      }
-
-      // Map Zoho Books contact details to our customer schema
-      return combined.map((contact: any) => ({
+      // Map live API results
+      const liveMapped = allContacts.map((contact: any) => ({
         zohoContactId: contact.contact_id,
         companyName: contact.company_name || contact.contact_name,
         customerName: contact.contact_name,
@@ -139,6 +192,19 @@ export class ZohoService {
           ? `${contact.billing_address.address || ''} ${contact.billing_address.city || ''} ${contact.billing_address.state || ''} ${contact.billing_address.zip || ''}`.trim()
           : ''
       }));
+
+      // Merge cached matches and live API matches, deduplicate by zohoContactId
+      const seen = new Set<string>();
+      const combined: any[] = [];
+
+      for (const item of [...cachedMatches, ...liveMapped]) {
+        if (!seen.has(item.zohoContactId)) {
+          seen.add(item.zohoContactId);
+          combined.push(item);
+        }
+      }
+
+      return combined;
     } catch (error: any) {
       console.error('Error in searchContacts:', error.message);
       return [];
